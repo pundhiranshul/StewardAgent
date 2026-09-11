@@ -1,0 +1,11 @@
+{
+  "name": "steward-agent",
+  "version": "1.0.0",
+  "description": "Steward Growth Signal Agent",
+  "scripts": {
+    "dev": "concurrently \"cd backend && venv/bin/python server.py\" \"npm run dev --prefix frontend\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

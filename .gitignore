@@ -1,0 +1,50 @@
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Data and DBs
+data/
+chroma_db/
+*.sqlite3
+
+# Outputs / Reports
+*.pdf
+*.png
+*.jpg
+*.jpeg
+!frontend/public/logo.png
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Scratch / Test files
+test_*.py
+test.css
+eval_*.py
+
+# Node
+node_modules/
+
+# Generated Reports
+Reports/
+
+# Scratch/Misc
+removed_keys.txt

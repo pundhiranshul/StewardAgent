@@ -1,0 +1,113 @@
+@import "tailwindcss";
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+:root {
+  --background: #F5F5F7;
+  --foreground: #171717;
+  --glow-cyan: rgba(34, 211, 238, 0.85);
+  --glow-emerald: rgba(163, 230, 53, 0.85);
+}
+
+.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --glow-cyan: rgba(6, 182, 212, 0.15);
+  --glow-emerald: rgba(16, 185, 129, 0.15);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+@plugin "@tailwindcss/typography";
+
+@media print {
+  /* Let the browser size the page properly */
+  @page {
+    size: A4;
+    margin: 1cm;
+  }
+
+  /* Force the table to respect the page width */
+  table {
+    width: 100% !important;
+    max-width: 100% !important;
+    table-layout: fixed !important; /* CRITICAL for preventing horizontal overflow */
+    page-break-inside: auto !important;
+    font-size: 9px !important; /* Drop font size aggressively to fit columns */
+  }
+
+  tr {
+    page-break-inside: avoid !important;
+    page-break-after: auto !important;
+  }
+
+  td, th {
+    word-wrap: break-word !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+    white-space: normal !important; /* Force sentences to break */
+    padding: 4px !important; /* Tighter padding */
+    vertical-align: top !important; /* Keep text aligned properly when wrapped */
+  }
+
+  /* Ensure the prose container itself can span full width */
+  .prose {
+    max-width: none !important;
+  }
+  
+  /* Color coding for the report */
+  .prose h1, .prose h2, .prose h3, .prose h4 {
+    color: #064e3b !important; /* emerald-900 */
+    border-bottom: 1px solid #a7f3d0 !important; /* emerald-200 */
+    padding-bottom: 0.25rem !important;
+    margin-bottom: 1rem !important;
+  }
+
+  .prose h1, .prose h2 {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+  
+  .prose strong {
+    color: #047857 !important; /* emerald-700 */
+  }
+
+  .prose a {
+    color: #059669 !important; /* emerald-600 */
+    text-decoration: underline !important;
+  }
+
+  /* Apply color adjust safely ONLY to the header to keep the rest of the PDF light */
+  .from-emerald-900 {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* CRITICAL: Override the inline React gradient background which was causing the lag and colored margins */
+  main {
+    background: white !important;
+  }
+
+  /* Remove any scrolling wrappers that might clip */
+  * {
+    overflow: visible !important;
+  }
+}
+
+  /* Footnotes print styling */
+  section[data-footnotes] {
+    margin-top: 2rem !important;
+    padding-top: 1rem !important;
+    border-top: 1px solid #e5e7eb !important;
+    font-size: 0.75rem !important;
+    color: #4b5563 !important;
+  }
