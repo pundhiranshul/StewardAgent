@@ -17,6 +17,7 @@ export default function Home() {
   const [playStore, setPlayStore] = useState("");
   const [appStore, setAppStore] = useState("");
   const [context, setContext] = useState("");
+  const [accessCode, setAccessCode] = useState("");
   
   const [status, setStatus] = useState<"idle" | "running" | "completed" | "error">("idle");
   const [jobId, setJobId] = useState<string | null>(null);
@@ -127,7 +128,10 @@ export default function Home() {
     try {
       const res = await fetch("/api/analyze", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "x-access-code": accessCode
+        },
         body: JSON.stringify({
           url,
           play_store_url: playStore,
@@ -135,6 +139,12 @@ export default function Home() {
           additional_info: context
         })
       });
+      
+      if (res.status === 401) {
+        alert("Invalid Access Code. Please enter a valid code.");
+        setStatus("idle");
+        return;
+      }
       
       const data = await res.json();
       setJobId(data.job_id);
@@ -149,7 +159,15 @@ export default function Home() {
     const checkStatus = async () => {
       if (!jobId || status !== "running") return;
       try {
-        const res = await fetch(`/api/status/${jobId}`);
+        const res = await fetch(`/api/status/${jobId}`, {
+          headers: { "x-access-code": accessCode }
+        });
+        
+        if (res.status === 401) {
+          setStatus("error");
+          return;
+        }
+
         const data = await res.json();
         
         if (data.live_logs) setLiveLogs(data.live_logs);
@@ -171,7 +189,10 @@ export default function Home() {
   const stopAnalysis = async () => {
     if (!jobId) return;
     try {
-      await fetch(`/api/stop/${jobId}`, { method: "POST" });
+      await fetch(`/api/stop/${jobId}`, { 
+        method: "POST",
+        headers: { "x-access-code": accessCode }
+      });
       setStatus("completed");
     } catch (error) {
       console.error(error);
@@ -365,12 +386,21 @@ export default function Home() {
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "x-access-code": accessCode
+        },
         body: JSON.stringify({
           messages: newMessages,
           context: chatContext
         })
       });
+
+      if (res.status === 401) {
+        setChatMessages(prev => [...prev, { role: "assistant", content: "Invalid Access Code. Please enter a valid code to chat." }]);
+        setIsChatLoading(false);
+        return;
+      }
 
       if (!res.body) throw new Error("No response body");
       const reader = res.body.getReader();
@@ -493,6 +523,14 @@ export default function Home() {
                   <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-500" /> Additional Context (Optional)
                 </label>
                 <textarea rows={3} placeholder="Specific areas to investigate, target audience, etc." value={context} onChange={(e) => setContext(e.target.value)} className="w-full bg-white/80 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-3 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all resize-none shadow-sm" />
+              </div>
+
+              <div className="space-y-1.5 pt-2 border-t border-neutral-200 dark:border-neutral-800">
+                <label className="text-sm font-bold text-neutral-700 dark:text-neutral-300 flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-600 dark:text-emerald-500"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                  Access Code *
+                </label>
+                <input required type="password" placeholder="Required to generate report" value={accessCode} onChange={(e) => setAccessCode(e.target.value)} className="w-full bg-white/80 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-3 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-sm" />
               </div>
 
               <button type="submit" className="mt-2 w-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-200 font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-md">
