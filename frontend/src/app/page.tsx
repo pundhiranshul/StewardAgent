@@ -540,6 +540,23 @@ export default function Home() {
           </div>
         )}
 
+        {status === "error" && (
+          <div className="flex flex-col items-center justify-center text-center gap-6 py-20 bg-white/60 dark:bg-neutral-900/60 backdrop-blur-2xl border border-rose-200 dark:border-rose-900/50 rounded-3xl max-w-3xl mx-auto shadow-xl">
+            <div className="w-16 h-16 bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-500 rounded-full flex items-center justify-center mb-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-2xl font-bold text-neutral-900 dark:text-white">Connection Error</h3>
+              <p className="text-neutral-600 dark:text-neutral-400 max-w-md mx-auto">
+                We couldn't connect to the Steward analysis engine. This might be due to a temporary network issue or the server is currently asleep.
+              </p>
+            </div>
+            <button onClick={resetAnalysis} className="mt-4 px-6 py-3 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 font-bold rounded-xl hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-colors shadow-md flex items-center gap-2">
+              <ArrowLeft className="w-4 h-4" /> Go Back
+            </button>
+          </div>
+        )}
+
         {(status === "running" || status === "completed") && (
           <div className="flex flex-col gap-6 w-full print:m-0 print:p-0">
             {/* Header controls */}
@@ -734,7 +751,7 @@ export default function Home() {
 
       </div>
 
-      <footer className="w-full py-8 text-center text-xs md:text-sm text-neutral-500 dark:text-neutral-500 font-medium print:hidden animate-in fade-in duration-1000 delay-500 fill-mode-both">
+      <footer className="w-full py-8 text-center text-xs md:text-sm text-neutral-500 dark:text-neutral-500 font-medium print:hidden">
         Designed & Built by <a href="https://github.com/pundhiranshul" target="_blank" rel="noopener noreferrer" className="text-emerald-600 dark:text-emerald-500 hover:underline hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors">Anshul Pundhir</a>
       </footer>
     </main>
