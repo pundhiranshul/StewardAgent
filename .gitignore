@@ -13,6 +13,7 @@ __pycache__/
 *$py.class
 *.so
 
+
 # Data and DBs
 data/
 chroma_db/
