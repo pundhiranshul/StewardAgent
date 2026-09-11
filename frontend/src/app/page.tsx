@@ -733,6 +733,10 @@ export default function Home() {
         )}
 
       </div>
+
+      <footer className="w-full py-8 text-center text-xs md:text-sm text-neutral-500 dark:text-neutral-500 font-medium print:hidden animate-in fade-in duration-1000 delay-500 fill-mode-both">
+        Designed & Built by <a href="https://github.com/pundhiranshul" target="_blank" rel="noopener noreferrer" className="text-emerald-600 dark:text-emerald-500 hover:underline hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors">Anshul Pundhir</a>
+      </footer>
     </main>
   );
 }
