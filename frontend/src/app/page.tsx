@@ -75,22 +75,34 @@ export default function Home() {
   const [historyList, setHistoryList] = useState<any[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
-  const fetchHistory = async () => {
-    if (!accessCode) {
-      alert("Please enter your Access Code first.");
+  const [showAccessCodeModal, setShowAccessCodeModal] = useState(false);
+  const [tempAccessCode, setTempAccessCode] = useState("");
+  const [accessCodeError, setAccessCodeError] = useState(false);
+
+  const fetchHistory = async (overrideCode?: string) => {
+    const codeToUse = overrideCode || accessCode;
+    if (!codeToUse) {
+      setShowAccessCodeModal(true);
       return;
     }
     setIsLoadingHistory(true);
     try {
       const res = await fetch("/api/history", {
-        headers: { "x-access-code": accessCode }
+        headers: { "x-access-code": codeToUse }
       });
       if (res.status === 401) {
-        alert("Invalid Access Code");
+        if (overrideCode) {
+           setAccessCodeError(true);
+           setTimeout(() => setAccessCodeError(false), 500);
+        } else {
+           alert("Invalid Access Code");
+        }
         setShowHistory(false);
         return;
       }
       const data = await res.json();
+      setAccessCode(codeToUse); // Save valid code
+      setShowAccessCodeModal(false);
       setHistoryList(data.history || []);
       setShowHistory(true);
     } catch (err) {
@@ -596,6 +608,54 @@ export default function Home() {
         `
       }}
     >
+      <style>{`
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-5px); }
+          50% { transform: translateX(5px); }
+          75% { transform: translateX(-5px); }
+        }
+        .animate-shake {
+          animation: shake 0.3s ease-in-out;
+        }
+      `}</style>
+
+      {showAccessCodeModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className={`bg-white dark:bg-neutral-900 border ${accessCodeError ? 'border-rose-500' : 'border-neutral-200 dark:border-neutral-800'} rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200 ${accessCodeError ? 'animate-shake' : ''}`}>
+            <div className="flex items-center justify-between p-5 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950/50">
+              <h2 className="text-xl font-bold text-neutral-900 dark:text-white flex items-center gap-2">Enter Access Code</h2>
+              <button onClick={() => { setShowAccessCodeModal(false); setTempAccessCode(""); setAccessCodeError(false); }} className="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 flex flex-col gap-4">
+              <input 
+                type="password"
+                placeholder="Access Code"
+                value={tempAccessCode}
+                onChange={(e) => {
+                  setTempAccessCode(e.target.value);
+                  setAccessCodeError(false);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') fetchHistory(tempAccessCode);
+                }}
+                className={`w-full px-4 py-3 rounded-xl border ${accessCodeError ? 'border-rose-500 ring-rose-500/20' : 'border-neutral-300 dark:border-neutral-700'} bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all`}
+                autoFocus
+              />
+              {accessCodeError && <span className="text-rose-500 text-sm font-medium">Invalid Access Code</span>}
+              <button 
+                onClick={() => fetchHistory(tempAccessCode)}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-md active:scale-95"
+              >
+                Submit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showHistory && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
@@ -695,14 +755,7 @@ export default function Home() {
                   <button onClick={() => setCurrentStep(1)} className="w-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-200 font-bold py-4 px-6 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-xl text-lg">
                     Start Analysis <ArrowRight className="w-5 h-5" />
                   </button>
-                  <button onClick={() => {
-                     const code = prompt("Please enter your Access Code to view past analyses:");
-                     if (code) {
-                       setAccessCode(code);
-                       alert("Code saved. Click again if it didn't open.");
-                     }
-                     if (accessCode || code) fetchHistory();
-                  }} className="w-full bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white hover:bg-neutral-50 dark:hover:bg-neutral-700 font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-sm border border-neutral-200 dark:border-neutral-700">
+                  <button onClick={() => fetchHistory()} className="w-full bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white hover:bg-neutral-50 dark:hover:bg-neutral-700 font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-sm border border-neutral-200 dark:border-neutral-700">
                     <History className="w-4 h-4" /> View Past Analyses
                   </button>
                 </div>
