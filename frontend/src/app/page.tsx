@@ -940,7 +940,41 @@ export default function Home() {
                       <Bot className="w-8 h-8" />
                     </div>
                     <h3 className="text-2xl font-bold text-neutral-900 dark:text-white">Ready to Deploy Steward</h3>
-                    <p className="text-neutral-500 max-w-sm mx-auto">Target: <span className="font-bold text-neutral-900 dark:text-neutral-300">{url}</span></p>
+                    
+                    <div className="text-left bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 space-y-4 max-w-xl mx-auto shadow-inner text-sm">
+                      <div className="grid grid-cols-[1fr_2fr] gap-4">
+                        <span className="font-semibold text-neutral-500 text-right">Target Website:</span>
+                        <span className="text-neutral-900 dark:text-neutral-200 break-words">{url}</span>
+                        
+                        {playStore && (
+                          <>
+                            <span className="font-semibold text-neutral-500 text-right">Play Store:</span>
+                            <span className="text-neutral-900 dark:text-neutral-200 break-words">{playStore}</span>
+                          </>
+                        )}
+                        
+                        {appStore && (
+                          <>
+                            <span className="font-semibold text-neutral-500 text-right">App Store:</span>
+                            <span className="text-neutral-900 dark:text-neutral-200 break-words">{appStore}</span>
+                          </>
+                        )}
+                      </div>
+                      
+                      {context && (
+                        <div className="pt-4 border-t border-neutral-200 dark:border-neutral-800">
+                          <span className="font-semibold text-neutral-500 block mb-1">Additional Context:</span>
+                          <span className="text-neutral-900 dark:text-neutral-200">{context}</span>
+                        </div>
+                      )}
+                      
+                      {pdfSummary && (
+                        <div className="pt-4 border-t border-neutral-200 dark:border-neutral-800">
+                          <span className="font-semibold text-neutral-500 block mb-1">PDF Summary ({pdfFile?.name}):</span>
+                          <span className="text-neutral-900 dark:text-neutral-200 text-xs line-clamp-3 italic opacity-80">{pdfSummary}</span>
+                        </div>
+                      )}
+                    </div>
                     
                     <button onClick={startAnalysis} className="w-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-200 font-bold py-4 px-6 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-xl text-lg mt-8">
                       Start Autonomous Analysis <PlaySquare className="w-5 h-5" />
