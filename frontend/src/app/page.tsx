@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { ArrowRight, Bot, Loader2, PlaySquare, Smartphone, Globe, Terminal, FileText, CheckCircle2, Square, ArrowLeft, MessageSquare, X, Send, Copy } from "lucide-react";
+import { ArrowRight, Bot, Loader2, PlaySquare, Smartphone, Globe, Terminal, FileText, CheckCircle2, Square, ArrowLeft, MessageSquare, X, Send, Copy, History } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -25,6 +25,43 @@ export default function Home() {
     navigator.clipboard.writeText(content);
     setCopiedIndex(index);
     setTimeout(() => setCopiedIndex(null), 2000);
+  };
+  
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyList, setHistoryList] = useState<any[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  const fetchHistory = async () => {
+    if (!accessCode) {
+      alert("Please enter your Access Code first.");
+      return;
+    }
+    setIsLoadingHistory(true);
+    try {
+      const res = await fetch("/api/history", {
+        headers: { "x-access-code": accessCode }
+      });
+      if (res.status === 401) {
+        alert("Invalid Access Code");
+        setShowHistory(false);
+        return;
+      }
+      const data = await res.json();
+      setHistoryList(data.history || []);
+      setShowHistory(true);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
+  const loadPastAnalysis = (pastJobId: string) => {
+    setJobId(pastJobId);
+    setStatus("completed"); // checkStatus interval will update if running
+    setShowHistory(false);
+    setChatMessages([]);
+    setChatContext("");
   };
   
   const [status, setStatus] = useState<"idle" | "running" | "completed" | "error">("idle");
@@ -455,6 +492,50 @@ export default function Home() {
         `
       }}
     >
+      {showHistory && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between p-5 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950/50">
+              <h2 className="text-xl font-bold text-neutral-900 dark:text-white flex items-center gap-2"><History className="w-5 h-5 text-emerald-600" /> Past Analyses</h2>
+              <button onClick={() => setShowHistory(false)} className="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-2 overflow-y-auto max-h-[60vh]">
+              {isLoadingHistory ? (
+                <div className="p-8 flex justify-center text-emerald-500"><Loader2 className="w-6 h-6 animate-spin" /></div>
+              ) : historyList.length === 0 ? (
+                <div className="p-8 text-center text-neutral-500 dark:text-neutral-400">No past analyses found.</div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {historyList.map((item, idx) => (
+                    <button 
+                      key={idx} 
+                      onClick={() => loadPastAnalysis(item.job_id)}
+                      className="flex items-center justify-between p-4 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-800/50 text-left transition-colors border border-transparent hover:border-neutral-200 dark:hover:border-neutral-700"
+                    >
+                      <div>
+                        <div className="font-bold text-neutral-900 dark:text-white text-lg">{item.domain}</div>
+                        <div className="text-xs text-neutral-500 font-mono mt-1">ID: {item.job_id} • {new Date(item.timestamp * 1000).toLocaleDateString()} {new Date(item.timestamp * 1000).toLocaleTimeString()}</div>
+                      </div>
+                      <div>
+                        {item.status === 'completed' ? (
+                          <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 text-xs font-bold">Completed</span>
+                        ) : item.status === 'error' ? (
+                          <span className="px-2.5 py-1 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400 text-xs font-bold">Error</span>
+                        ) : (
+                          <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-xs font-bold">Running</span>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Tooltip for Follow-up */}
       <div 
         className={`tooltip-container absolute z-50 transform -translate-x-1/2 transition-all duration-200 ${selectionRect ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'}`}
@@ -551,9 +632,14 @@ export default function Home() {
                 <input required type="password" placeholder="Required to generate report" value={accessCode} onChange={(e) => setAccessCode(e.target.value)} className="w-full bg-white/80 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-3 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-sm" />
               </div>
 
-              <button type="submit" className="mt-2 w-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-200 font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-md">
-                Start Analysis <ArrowRight className="w-5 h-5" />
-              </button>
+              <div className="flex flex-col gap-3 w-full mt-2">
+                <button type="submit" className="w-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-200 font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-md">
+                  Start Analysis <ArrowRight className="w-5 h-5" />
+                </button>
+                <button type="button" onClick={fetchHistory} className="w-full bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white hover:bg-neutral-50 dark:hover:bg-neutral-700 font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-sm border border-neutral-200 dark:border-neutral-700">
+                  <History className="w-4 h-4" /> View Past Analyses
+                </button>
+              </div>
             </form>
           </div>
         )}
