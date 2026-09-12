@@ -393,6 +393,7 @@ export default function Home() {
   const resetAnalysis = () => {
     setStatus("idle");
     setJobId(null);
+    setCurrentStep(0);
   };
 
   // Text selection handler
