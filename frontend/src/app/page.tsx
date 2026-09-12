@@ -78,6 +78,33 @@ export default function Home() {
   const [showAccessCodeModal, setShowAccessCodeModal] = useState(false);
   const [tempAccessCode, setTempAccessCode] = useState("");
   const [accessCodeError, setAccessCodeError] = useState(false);
+  
+  const [isVerifyingCode, setIsVerifyingCode] = useState(false);
+  const [mainAccessCodeError, setMainAccessCodeError] = useState(false);
+
+  const verifyCodeAndProceed = async () => {
+    if (!accessCode) {
+      alert("Please enter Access Code");
+      return;
+    }
+    setIsVerifyingCode(true);
+    setMainAccessCodeError(false);
+    try {
+      const res = await fetch("/api/history", {
+        headers: { "x-access-code": accessCode }
+      });
+      if (res.ok) {
+        setCurrentStep(6);
+      } else {
+        setMainAccessCodeError(true);
+        setTimeout(() => setMainAccessCodeError(false), 500);
+      }
+    } catch (e) {
+      alert("Failed to verify code");
+    } finally {
+      setIsVerifyingCode(false);
+    }
+  };
 
   const fetchHistory = async (overrideCode?: string) => {
     const codeToUse = overrideCode || accessCode;
@@ -844,9 +871,29 @@ export default function Home() {
                         Access Code *
                       </label>
                       <p className="text-sm text-neutral-500">Required. Enter your agent execution code to authorize resource usage.</p>
-                      <input required type="password" placeholder="••••••••" value={accessCode} onChange={(e) => setAccessCode(e.target.value)} className="w-full bg-white/80 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-3 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 mt-2" />
+                      <input 
+                        required 
+                        type="password" 
+                        placeholder="••••••••" 
+                        value={accessCode} 
+                        onChange={(e) => {
+                          setAccessCode(e.target.value);
+                          setMainAccessCodeError(false);
+                        }} 
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') verifyCodeAndProceed();
+                        }}
+                        className={`w-full bg-white/80 dark:bg-neutral-800/80 border ${mainAccessCodeError ? 'border-rose-500 ring-rose-500/20' : 'border-neutral-200 dark:border-neutral-700'} rounded-xl px-4 py-3 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 mt-2 transition-all ${mainAccessCodeError ? 'animate-shake' : ''}`} 
+                      />
+                      {mainAccessCodeError && <span className="text-rose-500 text-sm font-medium">Invalid Access Code</span>}
                     </div>
-                    <button onClick={() => accessCode ? setCurrentStep(6) : alert('Please enter Access Code')} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-xl mt-6">Authorize & Next</button>
+                    <button 
+                      onClick={verifyCodeAndProceed} 
+                      disabled={isVerifyingCode}
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-xl mt-6 disabled:opacity-50 transition-all shadow-md active:scale-95 flex items-center justify-center gap-2"
+                    >
+                      {isVerifyingCode ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Authorize & Next'}
+                    </button>
                   </div>
                 )}
 
