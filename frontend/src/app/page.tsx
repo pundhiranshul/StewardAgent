@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { ArrowRight, Bot, Loader2, PlaySquare, Smartphone, Globe, Terminal, FileText, CheckCircle2, Square, ArrowLeft, MessageSquare, X, Send } from "lucide-react";
+import { ArrowRight, Bot, Loader2, PlaySquare, Smartphone, Globe, Terminal, FileText, CheckCircle2, Square, ArrowLeft, MessageSquare, X, Send, Copy } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -18,6 +18,14 @@ export default function Home() {
   const [appStore, setAppStore] = useState("");
   const [context, setContext] = useState("");
   const [accessCode, setAccessCode] = useState("");
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const handleCopy = (content: string, index: number) => {
+    navigator.clipboard.writeText(content);
+    setCopiedIndex(index);
+    setTimeout(() => setCopiedIndex(null), 2000);
+  };
   
   const [status, setStatus] = useState<"idle" | "running" | "completed" | "error">("idle");
   const [jobId, setJobId] = useState<string | null>(null);
@@ -50,7 +58,7 @@ export default function Home() {
   // Memoize the huge report rendering to avoid lag on chat input
   const renderedReport = useMemo(() => {
     if (!report) return null;
-    const footnoteRegex = /<span class="footnote" data-source-id="([^"]+)">(.*?)<\/span>/g;
+    const footnoteRegex = /`?<span class="footnote" data-source-id="([^"]+)">(.*?)<\/span>`?/g;
     
     // Split by major headings (H1 or H2)
     const sections = report.split(/(?=\n#{1,2}\s)/);
@@ -126,18 +134,21 @@ export default function Home() {
     setChatContext("");
     
     try {
+      const formData = new FormData();
+      formData.append("url", url);
+      formData.append("play_store_url", playStore);
+      formData.append("app_store_url", appStore);
+      formData.append("additional_info", context);
+      if (pdfFile) {
+        formData.append("file", pdfFile);
+      }
+
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { 
-          "Content-Type": "application/json",
           "x-access-code": accessCode
         },
-        body: JSON.stringify({
-          url,
-          play_store_url: playStore,
-          app_store_url: appStore,
-          additional_info: context
-        })
+        body: formData
       });
       
       if (res.status === 401) {
@@ -525,7 +536,14 @@ export default function Home() {
                 <textarea rows={3} placeholder="Specific areas to investigate, target audience, etc." value={context} onChange={(e) => setContext(e.target.value)} className="w-full bg-white/80 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-3 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all resize-none shadow-sm" />
               </div>
 
-              <div className="space-y-1.5 pt-2 border-t border-neutral-200 dark:border-neutral-800">
+              <div className="space-y-1.5 border-t border-neutral-200 dark:border-neutral-800 pt-4">
+                <label className="text-sm font-bold text-neutral-700 dark:text-neutral-300 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-500" /> Upload Company PDF (Optional)
+                </label>
+                <input type="file" accept="application/pdf" onChange={(e) => setPdfFile(e.target.files?.[0] || null)} className="w-full bg-white/80 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-2.5 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-sm text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 dark:file:bg-emerald-950 dark:file:text-emerald-400" />
+              </div>
+
+              <div className="space-y-1.5 pt-2">
                 <label className="text-sm font-bold text-neutral-700 dark:text-neutral-300 flex items-center gap-2">
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-600 dark:text-emerald-500"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                   Access Code *
@@ -680,8 +698,8 @@ export default function Home() {
                     </div>
                   ) : (
                     chatMessages.map((msg, i) => (
-                      <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[90%] rounded-2xl px-5 py-3 text-sm prose prose-sm ${msg.role === 'user' ? 'bg-emerald-600 text-white rounded-br-none prose-invert' : 'bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-800 dark:text-neutral-200 rounded-bl-none shadow-sm dark:prose-invert'}`}>
+                      <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} group`}>
+                        <div className={`max-w-[90%] rounded-2xl px-5 py-3 text-sm prose prose-sm ${msg.role === 'user' ? 'bg-emerald-600 text-white rounded-br-none prose-invert' : 'bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-800 dark:text-neutral-200 rounded-bl-none shadow-sm dark:prose-invert relative'}`}>
                           <ReactMarkdown 
                             remarkPlugins={[remarkGfm]} 
                             rehypePlugins={[rehypeRaw]}
@@ -697,6 +715,15 @@ export default function Home() {
                           >
                             {msg.content}
                           </ReactMarkdown>
+                          {msg.role === 'assistant' && (
+                            <button
+                              onClick={() => handleCopy(msg.content, i)}
+                              className="absolute -right-8 bottom-0 p-1.5 text-neutral-400 hover:text-emerald-500 opacity-0 group-hover:opacity-100 transition-all bg-white dark:bg-neutral-800 rounded-md shadow-sm border border-neutral-200 dark:border-neutral-700 z-10"
+                              title="Copy response"
+                            >
+                              {copiedIndex === i ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))
