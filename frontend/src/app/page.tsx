@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { ArrowRight, Bot, Loader2, PlaySquare, Smartphone, Globe, Terminal, FileText, CheckCircle2, Square, ArrowLeft, MessageSquare, X, Send, Copy, History } from "lucide-react";
+import { ArrowRight, Bot, Loader2, PlaySquare, Smartphone, Globe, Terminal, FileText, CheckCircle2, Square, ArrowLeft, MessageSquare, X, Send, Copy, History, ChevronDown, ChevronUp } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -56,12 +56,34 @@ export default function Home() {
     }
   };
 
-  const loadPastAnalysis = (pastJobId: string) => {
+  const [contextSummary, setContextSummary] = useState<string>("");
+  const [showSummary, setShowSummary] = useState(false);
+
+  const loadPastAnalysis = async (pastJobId: string) => {
     setJobId(pastJobId);
-    setStatus("completed"); // checkStatus interval will update if running
     setShowHistory(false);
     setChatMessages([]);
     setChatContext("");
+    setReport("");
+    setLiveLogs("Loading past analysis...");
+    setContextSummary("");
+    setShowSummary(false);
+    
+    try {
+      const res = await fetch(`/api/status/${pastJobId}`, {
+        headers: { "x-access-code": accessCode }
+      });
+      const data = await res.json();
+      
+      setStatus(data.status);
+      if (data.final_report) setReport(data.final_report);
+      if (data.live_logs) setLiveLogs(data.live_logs);
+      if (data.context_summary) setContextSummary(data.context_summary);
+      
+    } catch (err) {
+      console.error(err);
+      setStatus("error");
+    }
   };
   
   const [status, setStatus] = useState<"idle" | "running" | "completed" | "error">("idle");
@@ -169,6 +191,8 @@ export default function Home() {
     setReport("");
     setChatMessages([]);
     setChatContext("");
+    setContextSummary("");
+    setShowSummary(false);
     
     try {
       const formData = new FormData();
@@ -211,15 +235,25 @@ export default function Home() {
           headers: { "x-access-code": accessCode }
         });
         
+        const data = await res.json();
+
         if (res.status === 401) {
           setStatus("error");
+          if (data.final_report) {
+             setReport(data.final_report);
+          }
+          if (data.live_logs) {
+             setLiveLogs(data.live_logs);
+          }
+          if (data.context_summary) {
+             setContextSummary(data.context_summary);
+          }
           return;
         }
 
-        const data = await res.json();
-        
         if (data.live_logs) setLiveLogs(data.live_logs);
         if (data.final_report) setReport(data.final_report);
+        if (data.context_summary) setContextSummary(data.context_summary);
         
         if (data.status === "completed" || data.status === "stopped") {
           setStatus("completed");
@@ -729,6 +763,26 @@ export default function Home() {
                     <div ref={logsEndRef} />
                   </div>
                 </details>
+
+                {/* Context Summary Collapsible */}
+                {contextSummary && (
+                  <details className="group bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden shadow-lg transition-all duration-300 print:hidden">
+                    <summary className="px-5 py-4 cursor-pointer flex items-center justify-between list-none hover:bg-white dark:hover:bg-neutral-900 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-500" />
+                        <span className="text-sm font-bold text-neutral-700 dark:text-neutral-300">
+                          View PDF / Context Summary
+                        </span>
+                      </div>
+                      <div className="text-neutral-500 group-open:rotate-180 transition-transform duration-300">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                      </div>
+                    </summary>
+                    <div className="border-t border-neutral-200 dark:border-neutral-800 p-4 max-h-[300px] overflow-y-auto font-mono text-xs text-neutral-600 dark:text-neutral-400 bg-neutral-50 dark:bg-neutral-900 whitespace-pre-wrap leading-relaxed shadow-inner">
+                      {contextSummary}
+                    </div>
+                  </details>
+                )}
 
                 <div 
                   ref={reportRef}
