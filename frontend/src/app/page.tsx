@@ -1165,13 +1165,25 @@ export default function Home() {
                             {msg.content}
                           </ReactMarkdown>
                           {msg.role === 'assistant' && (
-                            <button
-                              onClick={() => handleCopy(msg.content, i)}
-                              className="absolute -right-8 bottom-0 p-1.5 text-neutral-400 hover:text-emerald-500 opacity-0 group-hover:opacity-100 transition-all bg-white dark:bg-neutral-800 rounded-md shadow-sm border border-neutral-200 dark:border-neutral-700 z-10"
-                              title="Copy response"
-                            >
-                              {copiedIndex === i ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
-                            </button>
+                            <div className="mt-3 flex justify-end">
+                              <button
+                                onClick={() => handleCopy(msg.content, i)}
+                                className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-neutral-500 hover:text-emerald-600 dark:hover:text-emerald-400 bg-neutral-100 dark:bg-neutral-900 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-md transition-colors border border-neutral-200 dark:border-neutral-800"
+                                title="Copy response"
+                              >
+                                {copiedIndex === i ? (
+                                  <>
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                                    <span className="text-emerald-600 dark:text-emerald-400">Copied</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="w-3.5 h-3.5" />
+                                    <span>Copy</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
                           )}
                         </div>
                       </div>
