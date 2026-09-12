@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { ArrowRight, Bot, Loader2, PlaySquare, Smartphone, Globe, Terminal, FileText, CheckCircle2, Square, ArrowLeft, MessageSquare, X, Send, Copy, History, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowRight, Bot, Loader2, PlaySquare, Smartphone, Globe, Terminal, FileText, CheckCircle2, Square, ArrowLeft, MessageSquare, X, Send, Copy, History, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -41,6 +41,15 @@ export default function Home() {
       if (res.status === 401) {
         alert("Invalid Access Code");
         setIsSummarizingPdf(false);
+        return;
+      }
+      if (!res.ok) {
+        let errorMsg = "Failed to summarize PDF";
+        try {
+          const errData = await res.json();
+          errorMsg = errData.detail || errorMsg;
+        } catch(e) {}
+        alert(`Server Error: ${errorMsg}. Did you restart the backend?`);
         return;
       }
       const data = await res.json();
@@ -88,6 +97,30 @@ export default function Home() {
       console.error(err);
     } finally {
       setIsLoadingHistory(false);
+    }
+  };
+
+  const deleteHistory = async (jobIdToDelete: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // prevent opening the chat
+    if (!confirm("Are you sure you want to delete this analysis permanently?")) return;
+    
+    try {
+      const res = await fetch(`/api/history/${jobIdToDelete}`, {
+        method: "DELETE",
+        headers: { "x-access-code": accessCode }
+      });
+      if (res.ok) {
+        setHistoryList(prev => prev.filter(item => item.job_id !== jobIdToDelete));
+        if (jobId === jobIdToDelete) {
+           // if they deleted the currently open job, maybe reset UI
+           setStatus("idle");
+        }
+      } else {
+        alert("Failed to delete the analysis.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error deleting analysis.");
     }
   };
 
@@ -580,25 +613,29 @@ export default function Home() {
               ) : (
                 <div className="flex flex-col gap-2">
                   {historyList.map((item, idx) => (
-                    <button 
-                      key={idx} 
-                      onClick={() => loadPastAnalysis(item.job_id)}
-                      className="flex items-center justify-between p-4 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-800/50 text-left transition-colors border border-transparent hover:border-neutral-200 dark:hover:border-neutral-700"
-                    >
-                      <div>
-                        <div className="font-bold text-neutral-900 dark:text-white text-lg">{item.domain}</div>
-                        <div className="text-xs text-neutral-500 font-mono mt-1">ID: {item.job_id} • {new Date(item.timestamp * 1000).toLocaleDateString()} {new Date(item.timestamp * 1000).toLocaleTimeString()}</div>
-                      </div>
-                      <div>
-                        {item.status === 'completed' ? (
-                          <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 text-xs font-bold">Completed</span>
-                        ) : item.status === 'error' ? (
-                          <span className="px-2.5 py-1 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400 text-xs font-bold">Error</span>
-                        ) : (
-                          <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-xs font-bold">Running</span>
-                        )}
-                      </div>
-                    </button>
+                    <div key={idx} className="flex items-center gap-2 group">
+                      <button 
+                        onClick={() => loadPastAnalysis(item.job_id)}
+                        className="flex-1 flex items-center justify-between p-4 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-800/50 text-left transition-colors border border-transparent hover:border-neutral-200 dark:hover:border-neutral-700"
+                      >
+                        <div>
+                          <div className="font-bold text-neutral-900 dark:text-white text-lg">{item.domain}</div>
+                          <div className="text-xs text-neutral-500 font-mono mt-1">ID: {item.job_id} • {new Date(item.timestamp * 1000).toLocaleDateString()} {new Date(item.timestamp * 1000).toLocaleTimeString()}</div>
+                        </div>
+                        <div>
+                          {item.status === 'completed' ? (
+                            <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 text-xs font-bold">Completed</span>
+                          ) : item.status === 'error' ? (
+                            <span className="px-2.5 py-1 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400 text-xs font-bold">Error</span>
+                          ) : (
+                            <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-xs font-bold">Running</span>
+                          )}
+                        </div>
+                      </button>
+                      <button onClick={(e) => deleteHistory(item.job_id, e)} className="p-3 text-neutral-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-colors opacity-0 group-hover:opacity-100">
+                         <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
                   ))}
                 </div>
               )}
