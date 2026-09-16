@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { ArrowRight, Bot, Loader2, PlaySquare, Smartphone, Globe, Terminal, FileText, CheckCircle2, Square, ArrowLeft, MessageSquare, X, Send } from "lucide-react";
+import { ArrowRight, Bot, Loader2, PlaySquare, Smartphone, Globe, Terminal, FileText, CheckCircle2, Square, ArrowLeft, MessageSquare, X, Send, Copy, Pencil } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -679,9 +679,11 @@ export default function Home() {
                       <p className="text-sm font-medium">Select any text in the report to ask a targeted question, or type below to ask a general question.</p>
                     </div>
                   ) : (
-                    chatMessages.map((msg, i) => (
-                      <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[90%] rounded-2xl px-5 py-3 text-sm prose prose-sm ${msg.role === 'user' ? 'bg-emerald-600 text-white rounded-br-none prose-invert' : 'bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-800 dark:text-neutral-200 rounded-bl-none shadow-sm dark:prose-invert'}`}>
+                    chatMessages.map((msg, i) => {
+                      const isLastUserMsg = msg.role === 'user' && i === chatMessages.map(m => m.role).lastIndexOf('user');
+                      return (
+                      <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} group`}>
+                        <div className={`relative max-w-[90%] rounded-2xl px-5 py-3 text-sm prose prose-sm ${msg.role === 'user' ? 'bg-emerald-600 text-white rounded-br-none prose-invert' : 'bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-800 dark:text-neutral-200 rounded-bl-none shadow-sm dark:prose-invert'}`}>
                           <ReactMarkdown 
                             remarkPlugins={[remarkGfm]} 
                             rehypePlugins={[rehypeRaw]}
@@ -697,9 +699,30 @@ export default function Home() {
                           >
                             {msg.content}
                           </ReactMarkdown>
+                          <div className={`absolute ${msg.role === 'user' ? 'right-full mr-2' : 'left-full ml-2'} bottom-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 flex-row`}>
+                            {msg.role === 'user' && isLastUserMsg && (
+                              <button
+                                onClick={() => {
+                                  setChatInput(msg.content);
+                                  document.getElementById('chat-input')?.focus();
+                                }}
+                                className="p-1.5 text-neutral-500 hover:text-emerald-600 bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 shadow-sm shrink-0"
+                                title="Edit message"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => navigator.clipboard.writeText(msg.content)}
+                              className="p-1.5 text-neutral-500 hover:text-emerald-600 bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 shadow-sm shrink-0"
+                              title="Copy message"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    ))
+                    )})
                   )}
                   {isChatLoading && (
                     <div className="flex justify-start">
@@ -717,7 +740,7 @@ export default function Home() {
                   {chatContext && (
                     <div className="flex items-start gap-2 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-100 dark:border-emerald-900/50 p-2 rounded-lg relative">
                       <div className="flex-1 text-xs text-emerald-800 dark:text-emerald-400 truncate">
-                        <span className="font-bold">Quoting:</span> "{selectedTextSnippet}"
+                        <span className="font-bold">Quoting:</span> &quot;{selectedTextSnippet}&quot;
                       </div>
                       <button onClick={clearChatContext} className="text-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-300 p-0.5">
                         <X className="w-3.5 h-3.5" />
