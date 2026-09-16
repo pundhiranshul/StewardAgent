@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { ArrowRight, Bot, Loader2, PlaySquare, Smartphone, Globe, Terminal, FileText, CheckCircle2, Square, ArrowLeft, MessageSquare, X, Send } from "lucide-react";
+import { ArrowRight, Bot, Loader2, PlaySquare, Smartphone, Globe, Terminal, FileText, CheckCircle2, Square, ArrowLeft, MessageSquare, X, Send, Copy, Pencil } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -436,6 +436,31 @@ export default function Home() {
     setSelectedTextSnippet("");
   };
 
+  const editMessage = (index: number) => {
+    const msgToEdit = chatMessages[index];
+    if (msgToEdit.role !== "user") return;
+    
+    // Remove this message and everything after it
+    const newMessages = chatMessages.slice(0, index);
+    setChatMessages(newMessages);
+    
+    let originalText = msgToEdit.content;
+    if (originalText.startsWith("> ")) {
+      const parts = originalText.split("\n\n");
+      if (parts.length > 1) {
+        const snippet = parts[0].substring(2);
+        setChatContext(snippet);
+        setSelectedTextSnippet(snippet.length > 100 ? snippet.substring(0, 100) + '...' : snippet);
+        originalText = parts.slice(1).join("\n\n");
+      }
+    }
+    
+    setChatInput(originalText);
+    setTimeout(() => {
+      document.getElementById('chat-input')?.focus();
+    }, 10);
+  };
+
   const sendChatMessage = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!chatInput.trim() && !chatContext) return;
@@ -835,7 +860,7 @@ export default function Home() {
                     </div>
                   ) : (
                     chatMessages.map((msg, i) => (
-                      <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      <div key={i} className={`group flex flex-col gap-1 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
                         <div className={`max-w-[90%] rounded-2xl px-5 py-3 text-sm prose prose-sm ${msg.role === 'user' ? 'bg-emerald-600 text-white rounded-br-none prose-invert' : 'bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-800 dark:text-neutral-200 rounded-bl-none shadow-sm dark:prose-invert'}`}>
                           <ReactMarkdown
                             remarkPlugins={[remarkGfm]}
@@ -852,6 +877,24 @@ export default function Home() {
                           >
                             {msg.content}
                           </ReactMarkdown>
+                        </div>
+                        <div className={`flex gap-1.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity px-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                          <button 
+                            onClick={() => navigator.clipboard.writeText(msg.content)} 
+                            className="p-1.5 text-neutral-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-md transition-colors"
+                            title="Copy message"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </button>
+                          {msg.role === "user" && i >= chatMessages.length - 2 && (
+                            <button 
+                              onClick={() => editMessage(i)} 
+                              className="p-1.5 text-neutral-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-md transition-colors"
+                              title="Edit and resubmit"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))
