@@ -753,7 +753,7 @@ export default function Home() {
                     <p className="italic line-clamp-3 opacity-80 tracking-tight">&quot;{selectedTextSnippet}&quot;</p>
                   </div>
                 )}
-                <form onSubmit={handleChatSubmit} className="relative">
+                <form onSubmit={sendChatMessage} className="relative">
                   <input
                     type="text"
                     value={chatInput}
