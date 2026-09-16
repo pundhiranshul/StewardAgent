@@ -22,6 +22,7 @@ export default function Home() {
   const [appMode, setAppMode] = useState<"initial" | "new" | "past">("initial");
   const [pastReports, setPastReports] = useState<{job_id: string; domain: string; created_at: number}[]>([]);
   const [accessCodeError, setAccessCodeError] = useState(false);
+  const [isStartingAnalysis, setIsStartingAnalysis] = useState(false);
 
   const triggerAccessCodeError = () => {
     setAccessCodeError(false);
@@ -128,7 +129,7 @@ export default function Home() {
     e.preventDefault();
     if (!url) return;
 
-    setStatus("running");
+    setIsStartingAnalysis(true);
     setLiveLogs("");
     setReport("");
     setChatMessages([]);
@@ -149,16 +150,19 @@ export default function Home() {
         })
       });
 
+      setIsStartingAnalysis(false);
+
       if (res.status === 401) {
         triggerAccessCodeError();
-        setStatus("idle");
         return;
       }
 
       const data = await res.json();
+      setStatus("running");
       setJobId(data.job_id);
     } catch (error) {
       console.error(error);
+      setIsStartingAnalysis(false);
       setStatus("error");
     }
   };
@@ -613,17 +617,22 @@ export default function Home() {
               <button onClick={() => setAppMode("initial")} className="p-2 hover:bg-neutral-200 dark:hover:bg-neutral-800 rounded-full transition-colors mr-2">
                 <ArrowLeft className="w-5 h-5" />
               </button>
-              <div className="flex-1 flex flex-col sm:flex-row items-center gap-4 w-full">
-                <input 
-                  type="password" 
-                  placeholder="Enter Access Code"
-                  value={accessCode}
-                  onChange={(e) => { setAccessCode(e.target.value); setAccessCodeError(false); }}
-                  className={`w-full bg-white/80 dark:bg-neutral-800/80 border rounded-xl px-4 py-3 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all shadow-sm ${accessCodeError ? 'border-rose-500 text-rose-500 animate-shake focus:border-rose-500 focus:ring-rose-500/50' : 'border-neutral-200 dark:border-neutral-700 focus:border-emerald-500'}`}
-                />
+              <div className="flex-1 flex flex-col sm:flex-row items-start gap-4 w-full">
+                <div className="w-full flex-1">
+                  <input 
+                    type="password" 
+                    placeholder="Enter Access Code"
+                    value={accessCode}
+                    onChange={(e) => { setAccessCode(e.target.value); setAccessCodeError(false); }}
+                    className={`w-full bg-white/80 dark:bg-neutral-800/80 border rounded-xl px-4 py-3 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all shadow-sm ${accessCodeError ? 'border-rose-500 text-rose-500 animate-shake focus:border-rose-500 focus:ring-rose-500/50' : 'border-neutral-200 dark:border-neutral-700 focus:border-emerald-500'}`}
+                  />
+                  {accessCodeError && (
+                    <p className="text-rose-500 text-sm mt-1.5 px-1 animate-in fade-in">Invalid access code. Please try again.</p>
+                  )}
+                </div>
                 <button 
                   onClick={() => fetchPastReports(false)}
-                  className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-8 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md whitespace-nowrap"
+                  className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-8 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md whitespace-nowrap h-[50px]"
                 >
                   Fetch
                 </button>
@@ -724,10 +733,13 @@ export default function Home() {
                   Access Code *
                 </label>
                 <input required type="password" placeholder="Required to generate report" value={accessCode} onChange={(e) => { setAccessCode(e.target.value); setAccessCodeError(false); }} className={`w-full bg-white/80 dark:bg-neutral-800/80 border rounded-xl px-4 py-3 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all shadow-sm ${accessCodeError ? 'border-rose-500 text-rose-500 animate-shake focus:border-rose-500 focus:ring-rose-500/50' : 'border-neutral-200 dark:border-neutral-700 focus:border-emerald-500'}`} />
+                {accessCodeError && (
+                  <p className="text-rose-500 text-sm mt-1 px-1 animate-in fade-in">Invalid access code. Please try again.</p>
+                )}
               </div>
 
-              <button type="submit" className="mt-2 w-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-200 font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-md">
-                Start Analysis <ArrowRight className="w-5 h-5" />
+              <button type="submit" disabled={isStartingAnalysis} className="mt-2 w-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-200 font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-md disabled:opacity-70 disabled:cursor-not-allowed">
+                {isStartingAnalysis ? <Loader2 className="w-5 h-5 animate-spin" /> : "Start Analysis"} {!isStartingAnalysis && <ArrowRight className="w-5 h-5" />}
               </button>
             </form>
           </div>
