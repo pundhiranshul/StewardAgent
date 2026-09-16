@@ -18,6 +18,55 @@ export default function Home() {
   const [appStore, setAppStore] = useState("");
   const [context, setContext] = useState("");
   const [accessCode, setAccessCode] = useState("");
+
+  const [appMode, setAppMode] = useState<"initial" | "new" | "past">("initial");
+  const [pastReports, setPastReports] = useState<{job_id: string; domain: string; created_at: number}[]>([]);
+
+  const fetchPastReports = async () => {
+    if (!accessCode) {
+      alert("Please enter your Access Code to view past reports.");
+      return;
+    }
+    try {
+      const res = await fetch("/api/reports", {
+        headers: { "x-access-code": accessCode }
+      });
+      if (res.status === 401) {
+        alert("Invalid Access Code.");
+        return;
+      }
+      const data = await res.json();
+      setPastReports(data.reports || []);
+      setAppMode("past");
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const deleteReport = async (deleteJobId: string) => {
+    if (!confirm("Are you sure you want to delete this report?")) return;
+    try {
+      const res = await fetch(`/api/reports/${deleteJobId}`, {
+        method: "DELETE",
+        headers: { "x-access-code": accessCode }
+      });
+      if (res.ok) {
+        setPastReports(prev => prev.filter(r => r.job_id !== deleteJobId));
+        if (jobId === deleteJobId) {
+          resetAnalysis();
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const viewPastReport = (reportJobId: string) => {
+    setJobId(reportJobId);
+    setStatus("running"); // Trigger the status check loop to fetch it
+    setAppMode("new"); // Use the main view mode
+  };
+
   
   const [status, setStatus] = useState<"idle" | "running" | "completed" | "error">("idle");
   const [jobId, setJobId] = useState<string | null>(null);
@@ -434,349 +483,311 @@ export default function Home() {
   };
 
   return (
-    <main 
-      className="min-h-screen text-neutral-900 dark:text-neutral-100 selection:bg-emerald-500/30 dark:selection:bg-emerald-500/50 relative print:bg-white print:overflow-visible transition-colors duration-300"
-      style={{
-        background: `
-          radial-gradient(circle at 0% 20%, var(--glow-cyan) 0%, transparent 55%),
-          radial-gradient(circle at 100% 20%, var(--glow-emerald) 0%, transparent 55%),
-          var(--background)
-        `
-      }}
-    >
-      {/* Tooltip for Follow-up */}
-      <div 
-        className={`tooltip-container absolute z-50 transform -translate-x-1/2 transition-all duration-200 ${selectionRect ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'}`}
-        style={{ 
-          top: selectionRect?.top ?? 0, 
-          left: selectionRect?.left ?? 0 
-        }}
-      >
-        <button 
-          onMouseDown={(e) => {
-            e.preventDefault();
-            handleAskFollowUp();
-          }}
-          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm px-3 py-1.5 rounded-lg shadow-xl"
-        >
-          <MessageSquare className="w-4 h-4" /> Ask a follow up
-        </button>
+    <main className="min-h-screen bg-noise text-[#171717] selection:bg-[#cdff71] selection:text-[#171717] font-sans">
+      {/* Top Gradient Banner */}
+      <div className="w-full bg-steward-gradient text-[#171717] font-bold text-center py-4 sm:py-6 lg:py-8 tracking-tighter uppercase text-3xl sm:text-4xl md:text-6xl border-b border-[#171717]">
+        {appMode === "past" ? "PAST REPORTS" : "APPLY FOR A FREE GROWTH AUDIT*"}
       </div>
 
-      <div className="max-w-[95%] 2xl:max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-16 flex flex-col gap-8 md:gap-12 relative z-10 print:py-0 print:px-0 print:max-w-none">
-        
-        <header className="flex flex-col items-center justify-center w-full animate-in fade-in slide-in-from-top-4 duration-700 print:hidden relative">
-          <div className="absolute top-0 right-0">
-             <ThemeToggle />
-          </div>
-          <div className="flex items-center gap-4">
-            <img src="/logo.png" alt="Steward Icon" className="w-10 h-10 object-contain mix-blend-multiply dark:mix-blend-normal dark:invert dark:opacity-90" />
-            <h1 className="text-5xl md:text-6xl font-black tracking-tight text-neutral-900 dark:text-white flex items-start">
-              STEWARD<span className="text-2xl md:text-3xl text-neutral-600 dark:text-neutral-400 mt-1 ml-1">®</span>
-            </h1>
-          </div>
-          <p className="text-xs md:text-sm font-mono text-neutral-600 mt-2 font-medium tracking-widest text-center">
-            We Craft Digital Experiences
-          </p>
-        </header>
-
-        {status === "idle" && (
-          <div className="grid md:grid-cols-2 gap-12 items-center mt-4 print:hidden max-w-5xl mx-auto">
-            {/* Same as before... omitted for brevity if needed, but I'll provide full */}
-            <div className="space-y-6 animate-in fade-in slide-in-from-left-8 duration-700 delay-150 fill-mode-both">
-              <h2 className="text-4xl md:text-5xl font-bold tracking-tighter leading-[1.1] text-neutral-900 dark:text-white">
-                Uncover hidden <br/>
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-cyan-600">revenue leaks.</span>
-              </h2>
-              <p className="text-lg text-neutral-600 dark:text-neutral-400 leading-relaxed max-w-md font-medium">
-                Steward autonomously scours the web, app reviews, and statistical data to generate deeply cited, academic-grade growth reports for your product.
-              </p>
-            </div>
-
-            <form onSubmit={startAnalysis} className="bg-white/60 dark:bg-neutral-900/60 backdrop-blur-2xl border border-white/80 dark:border-neutral-800 rounded-3xl p-8 shadow-xl animate-in fade-in slide-in-from-right-8 duration-700 delay-300 fill-mode-both flex flex-col gap-5 relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-cyan-400 opacity-80" />
-              
-              <div className="space-y-1.5">
-                <label className="text-sm font-bold text-neutral-700 dark:text-neutral-300 flex items-center gap-2">
-                  <Globe className="w-4 h-4 text-emerald-600 dark:text-emerald-500" /> Target Website, Product, or Brand Name *
-                </label>
-                <input required type="text" placeholder="e.g., https://example.com or Nike" value={url} onChange={(e) => setUrl(e.target.value)} className="w-full bg-white/80 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-3 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-sm" />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-sm font-bold text-neutral-700 dark:text-neutral-300 flex items-center gap-2">
-                    <PlaySquare className="w-4 h-4 text-emerald-600 dark:text-emerald-500" /> Play Store URL
-                  </label>
-                  <input type="url" value={playStore} onChange={(e) => setPlayStore(e.target.value)} className="w-full bg-white/80 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-3 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-sm" />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-sm font-bold text-neutral-700 dark:text-neutral-300 flex items-center gap-2">
-                    <Smartphone className="w-4 h-4 text-emerald-600 dark:text-emerald-500" /> App Store URL
-                  </label>
-                  <input type="url" value={appStore} onChange={(e) => setAppStore(e.target.value)} className="w-full bg-white/80 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-3 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-sm" />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-sm font-bold text-neutral-700 dark:text-neutral-300 flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-500" /> Additional Context (Optional)
-                </label>
-                <textarea rows={3} placeholder="Specific areas to investigate, target audience, etc." value={context} onChange={(e) => setContext(e.target.value)} className="w-full bg-white/80 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-3 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all resize-none shadow-sm" />
-              </div>
-
-              <div className="space-y-1.5 pt-2 border-t border-neutral-200 dark:border-neutral-800">
-                <label className="text-sm font-bold text-neutral-700 dark:text-neutral-300 flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-600 dark:text-emerald-500"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                  Access Code *
-                </label>
-                <input required type="password" placeholder="Required to generate report" value={accessCode} onChange={(e) => setAccessCode(e.target.value)} className="w-full bg-white/80 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-3 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-sm" />
-              </div>
-
-              <button type="submit" className="mt-2 w-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-200 font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-md">
-                Start Analysis <ArrowRight className="w-5 h-5" />
-              </button>
-            </form>
-          </div>
+      <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-12 md:py-24">
+        {/* Navigation / Back Button */}
+        {appMode !== "initial" && !jobId && (
+          <button 
+            onClick={() => setAppMode("initial")}
+            className="mb-12 flex items-center gap-2 text-sm font-semibold tracking-tight hover:opacity-70 transition-opacity uppercase"
+          >
+            <ArrowLeft className="w-4 h-4" /> Back
+          </button>
         )}
 
-        {status === "error" && (
-          <div className="flex flex-col items-center justify-center text-center gap-6 py-20 bg-white/60 dark:bg-neutral-900/60 backdrop-blur-2xl border border-rose-200 dark:border-rose-900/50 rounded-3xl max-w-3xl mx-auto shadow-xl">
-            <div className="w-16 h-16 bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-500 rounded-full flex items-center justify-center mb-2">
-              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
-            </div>
-            <div className="space-y-2">
-              <h3 className="text-2xl font-bold text-neutral-900 dark:text-white">Connection Error</h3>
-              <p className="text-neutral-600 dark:text-neutral-400 max-w-md mx-auto">
-                We couldn't connect to the Steward analysis engine. This might be due to a temporary network issue or the server is currently asleep.
-              </p>
-            </div>
-            <button onClick={resetAnalysis} className="mt-4 px-6 py-3 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 font-bold rounded-xl hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-colors shadow-md flex items-center gap-2">
-              <ArrowLeft className="w-4 h-4" /> Go Back
+        {appMode === "initial" && (
+          <div className="flex flex-col md:flex-row gap-6 justify-center items-center h-[50vh]">
+            <button 
+              onClick={() => setAppMode("new")}
+              className="brutalist-button px-10 py-5 text-xl tracking-tight hover:scale-105 transition-transform"
+            >
+              Generate New Report →
+            </button>
+            <button 
+              onClick={() => setAppMode("past")}
+              className="brutalist-button bg-transparent !text-[#171717] border border-[#171717] px-10 py-5 text-xl tracking-tight hover:bg-[#171717] hover:!text-white hover:scale-105 transition-all"
+            >
+              Past Reports
             </button>
           </div>
         )}
 
-        {(status === "running" || status === "completed") && (
-          <div className="flex flex-col gap-6 w-full print:m-0 print:p-0">
-            {/* Header controls */}
-            <div className="flex items-center justify-between mb-4 print:hidden max-w-5xl mx-auto w-full">
-              <div className="flex items-center gap-3">
-                {status === "running" ? <Loader2 className="w-6 h-6 text-emerald-600 dark:text-emerald-500 animate-spin" /> : <CheckCircle2 className="w-6 h-6 text-emerald-600 dark:text-emerald-500" />}
-                <h2 className="text-2xl font-bold tracking-tight text-neutral-900 dark:text-white">
-                  {status === "running" ? "Agent is investigating..." : "Analysis Complete"}
-                </h2>
-              </div>
-              <div className="flex items-center gap-3">
-                {status === "running" && (
-                  <button onClick={stopAnalysis} className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900/50 border border-rose-200 dark:border-rose-900/50 rounded-lg transition-colors">
-                    <Square className="w-3.5 h-3.5 fill-current" /> Stop Generation
-                  </button>
-                )}
-                {status === "completed" && (
-                  <>
-                    <button 
-                      onClick={() => {
-                        const oldTitle = document.title;
-                        document.title = `Steward Agent Report on ${url || 'Company'}`;
-                        window.print();
-                        document.title = oldTitle;
-                      }} 
-                      className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-900/50 rounded-lg transition-colors shadow-sm"
-                    >
-                      <FileText className="w-3.5 h-3.5" /> Download PDF
-                    </button>
-                    <button onClick={resetAnalysis} className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-neutral-700 dark:text-neutral-300 bg-white dark:bg-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-700 border border-neutral-300 dark:border-neutral-700 rounded-lg transition-colors shadow-sm">
-                      <ArrowLeft className="w-3.5 h-3.5" /> New Analysis
-                    </button>
-                  </>
-                )}
-                <div className="text-sm font-mono text-neutral-600 dark:text-neutral-400 bg-white/60 dark:bg-neutral-800/60 backdrop-blur-md px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 shadow-sm">
-                  Job ID: {jobId}
-                </div>
+        {appMode === "past" && (
+          <div className="w-full max-w-4xl mx-auto space-y-6">
+            <div className="flex flex-col md:flex-row items-center gap-4 justify-between bg-white p-6 border border-[#171717] shadow-[4px_4px_0px_0px_rgba(23,23,23,1)]">
+              <div className="font-bold text-lg uppercase tracking-tight">Unlock Past Reports</div>
+              <div className="flex items-center gap-4 w-full md:w-auto">
+                <input 
+                  type="password" 
+                  placeholder="Enter Access Code"
+                  value={accessCode}
+                  onChange={(e) => setAccessCode(e.target.value)}
+                  className="brutalist-input px-4 py-3 text-base flex-1 md:w-64"
+                />
+                <button 
+                  onClick={fetchPastReports}
+                  className="brutalist-button px-6 py-3 text-base whitespace-nowrap"
+                >
+                  Fetch
+                </button>
               </div>
             </div>
 
-            <div className="grid lg:grid-cols-3 gap-6 w-full">
-              {/* Report Section (Left, spans 2 cols) */}
-              <div className="lg:col-span-2 flex flex-col gap-6">
-                
-                <details className="group bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden shadow-lg transition-all duration-300 print:hidden">
-                  <summary className="px-5 py-4 cursor-pointer flex items-center justify-between list-none hover:bg-white dark:hover:bg-neutral-900 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <Terminal className="w-4 h-4 text-emerald-600 dark:text-emerald-500" />
-                      <span className="text-sm font-bold text-neutral-700 dark:text-neutral-300">
-                        {status === "running" ? "Agent Activity Log (Analyzing...)" : "View Agent Activity Log"}
-                      </span>
-                      {status === "running" && (
-                        <div className="flex gap-1 ml-2">
-                          <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                          <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse [animation-delay:0.2s]" />
-                          <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse [animation-delay:0.4s]" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="text-neutral-500 group-open:rotate-180 transition-transform duration-300">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-                    </div>
-                  </summary>
-                  <div className="border-t border-neutral-200 dark:border-neutral-800 p-4 max-h-[300px] overflow-y-auto font-mono text-xs text-emerald-400 bg-neutral-900 whitespace-pre-wrap leading-relaxed shadow-inner">
-                    {liveLogs || "Initializing autonomous loop..."}
-                    <div ref={logsEndRef} />
-                  </div>
-                </details>
-
-                <div 
-                  ref={reportRef}
-                  onMouseUp={handleMouseUp}
-                  className="bg-white dark:bg-neutral-900 text-black dark:text-neutral-100 border border-neutral-200 dark:border-neutral-800 rounded-2xl flex flex-col shadow-2xl transition-all print:shadow-none print:border-none print:m-0 print:rounded-none"
-                >
-                  <div className="hidden print:flex bg-gradient-to-r from-emerald-900 to-emerald-800 p-8 rounded-t-2xl mb-8 items-end justify-between border-b-4 border-emerald-500">
-                    <div className="flex items-center gap-5">
-                      <img src="/logo.png" alt="Steward Icon" className="w-12 h-12 object-contain" />
-                      <div>
-                        <h1 className="text-4xl font-black tracking-tight text-white leading-none">STEWARD<span className="text-xl text-emerald-400 ml-1">®</span></h1>
-                        <p className="text-sm font-mono text-emerald-200/90 tracking-widest font-bold uppercase mt-1">Growth Intelligence Report</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs font-bold text-emerald-300/80 uppercase tracking-widest mb-1">Target Analysis</p>
-                      <p className="text-xl font-black text-white">{url || "Custom Target"}</p>
-                      <p className="text-xs font-mono text-emerald-200/80 font-semibold mt-1">{new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
-                    </div>
-                  </div>
-
-                  <div className="bg-neutral-100 dark:bg-neutral-950 border-b border-neutral-200 dark:border-neutral-800 px-6 py-4 flex items-center gap-2 rounded-t-2xl print:hidden">
-                    <FileText className="w-5 h-5 text-neutral-600 dark:text-neutral-400" />
-                    <span className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 tracking-wide">Growth Intelligence Report</span>
-                  </div>
-                  <div className="p-6 md:p-10 prose prose-sm md:prose-base prose-neutral dark:prose-invert max-w-none print:p-0 print:max-w-full">
-                    {report ? (
-                      <div className="animate-in fade-in duration-500">
-                        {renderedReport}
-                      </div>
-                    ) : (
-                      <div className="py-20 flex flex-col items-center justify-center text-neutral-400 dark:text-neutral-500 gap-4">
-                        <Loader2 className="w-10 h-10 animate-spin text-neutral-300 dark:text-neutral-600" />
-                        <p className="text-center font-medium">The agent is gathering context and will begin writing shortly...</p>
-                      </div>
-                    )}
-                  </div>
+            <div className="border-t border-l border-r border-[#171717] bg-white shadow-[4px_4px_0px_0px_rgba(23,23,23,1)]">
+              {pastReports.length === 0 ? (
+                <div className="p-8 text-center font-medium border-b border-[#171717]">
+                  No past reports found.
                 </div>
-              </div>
-
-              {/* Chat Section (Right, spans 1 col) */}
-              <div className="lg:col-span-1 print:hidden flex flex-col bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-xl overflow-hidden h-[calc(100vh-8rem)] sticky top-8">
-                <div className="bg-emerald-50/50 dark:bg-emerald-950/20 border-b border-neutral-200 dark:border-neutral-800 px-5 py-4 flex items-center gap-2">
-                  <Bot className="w-5 h-5 text-emerald-600 dark:text-emerald-500" />
-                  <span className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">Ask Steward</span>
-                </div>
-                
-                <div className="flex-1 p-4 overflow-y-auto bg-neutral-50 dark:bg-neutral-950/50 flex flex-col gap-4">
-                  {chatMessages.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center text-center h-full text-neutral-400 dark:text-neutral-500 p-6 space-y-3">
-                      <MessageSquare className="w-8 h-8 opacity-50" />
-                      <p className="text-sm font-medium">Select any text in the report to ask a targeted question, or type below to ask a general question.</p>
+              ) : (
+                pastReports.map((r, i) => (
+                  <div key={r.job_id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-6 border-b border-[#171717] gap-4 hover:bg-neutral-50 transition-colors">
+                    <div className="text-lg md:text-xl font-medium tracking-tight break-all">
+                      <span className="font-bold uppercase mr-2">{r.domain || r.job_id}</span>
+                      <span className="text-sm text-neutral-500 hidden sm:inline-block">({r.job_id})</span>
+                      <div className="text-sm text-neutral-500 mt-1">{new Date(r.created_at * 1000).toLocaleDateString()}</div>
                     </div>
-                  ) : (
-                    chatMessages.map((msg, i) => {
-                      const isLastUserMsg = msg.role === 'user' && i === chatMessages.map(m => m.role).lastIndexOf('user');
-                      return (
-                      <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} group`}>
-                        <div className={`relative max-w-[90%] rounded-2xl px-5 py-3 text-sm prose prose-sm ${msg.role === 'user' ? 'bg-emerald-600 text-white rounded-br-none prose-invert' : 'bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-800 dark:text-neutral-200 rounded-bl-none shadow-sm dark:prose-invert'}`}>
-                          <ReactMarkdown 
-                            remarkPlugins={[remarkGfm]} 
-                            rehypePlugins={[rehypeRaw]}
-                            components={{
-                              table: ({node, ...props}) => (
-                                <div className="w-full overflow-x-auto my-4 border border-neutral-200 dark:border-neutral-700 rounded-lg">
-                                  <table className="w-full text-left border-collapse" {...props} />
-                                </div>
-                              ),
-                              th: ({node, ...props}) => <th className="bg-neutral-50 dark:bg-neutral-900 px-3 py-2 font-semibold border-b border-neutral-200 dark:border-neutral-700" {...props} />,
-                              td: ({node, ...props}) => <td className="px-3 py-2 border-b border-neutral-100 dark:border-neutral-800 align-top" {...props} />
-                            }}
-                          >
-                            {msg.content}
-                          </ReactMarkdown>
-                          <div className={`absolute ${msg.role === 'user' ? 'right-full mr-2' : 'left-full ml-2'} bottom-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 flex-row`}>
-                            {msg.role === 'user' && isLastUserMsg && (
-                              <button
-                                onClick={() => {
-                                  setChatInput(msg.content);
-                                  document.getElementById('chat-input')?.focus();
-                                }}
-                                className="p-1.5 text-neutral-500 hover:text-emerald-600 bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 shadow-sm shrink-0"
-                                title="Edit message"
-                              >
-                                <Pencil className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                            <button
-                              onClick={() => navigator.clipboard.writeText(msg.content)}
-                              className="p-1.5 text-neutral-500 hover:text-emerald-600 bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 shadow-sm shrink-0"
-                              title="Copy message"
-                            >
-                              <Copy className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    )})
-                  )}
-                  {isChatLoading && (
-                    <div className="flex justify-start">
-                      <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-2xl rounded-bl-none px-4 py-3 flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 bg-neutral-400 dark:bg-neutral-500 rounded-full animate-pulse" />
-                        <span className="w-1.5 h-1.5 bg-neutral-400 dark:bg-neutral-500 rounded-full animate-pulse delay-75" />
-                        <span className="w-1.5 h-1.5 bg-neutral-400 dark:bg-neutral-500 rounded-full animate-pulse delay-150" />
-                      </div>
-                    </div>
-                  )}
-                  <div ref={chatEndRef} />
-                </div>
-
-                <div className="p-4 bg-white dark:bg-neutral-900 border-t border-neutral-200 dark:border-neutral-800 flex flex-col gap-2">
-                  {chatContext && (
-                    <div className="flex items-start gap-2 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-100 dark:border-emerald-900/50 p-2 rounded-lg relative">
-                      <div className="flex-1 text-xs text-emerald-800 dark:text-emerald-400 truncate">
-                        <span className="font-bold">Quoting:</span> &quot;{selectedTextSnippet}&quot;
-                      </div>
-                      <button onClick={clearChatContext} className="text-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-300 p-0.5">
-                        <X className="w-3.5 h-3.5" />
+                    <div className="flex items-center gap-6 shrink-0">
+                      <button 
+                        onClick={() => viewPastReport(r.job_id)}
+                        className="brutalist-button px-6 py-2 text-sm uppercase tracking-wider"
+                      >
+                        View
+                      </button>
+                      <button 
+                        onClick={() => deleteReport(r.job_id)}
+                        className="font-bold text-sm uppercase underline decoration-2 underline-offset-4 hover:text-red-600 transition-colors"
+                      >
+                        Delete
                       </button>
                     </div>
-                  )}
-                  <form onSubmit={sendChatMessage} className="flex items-center gap-2 relative">
-                    <input 
-                      id="chat-input"
-                      type="text" 
-                      placeholder={chatContext ? "Ask about this quote..." : "Ask a question..."}
-                      value={chatInput}
-                      onChange={(e) => setChatInput(e.target.value)}
-                      className="flex-1 bg-neutral-100 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder:text-neutral-500 border-none rounded-full px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-                      disabled={isChatLoading}
-                    />
-                    <button 
-                      type="submit"
-                      disabled={isChatLoading || (!chatInput.trim() && !chatContext)}
-                      className="p-2.5 rounded-full bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
-                    >
-                      <Send className="w-4 h-4" />
-                    </button>
-                  </form>
-                </div>
-              </div>
-
+                  </div>
+                ))
+              )}
             </div>
           </div>
         )}
 
+        {appMode === "new" && !jobId && (
+          <div className="flex flex-col lg:flex-row gap-16 lg:gap-24">
+            {/* Left Side: Massive Typography */}
+            <div className="flex-1">
+              <h1 className="text-[5rem] sm:text-[6rem] lg:text-[7.5rem] leading-[0.85] font-black tracking-[-0.04em] uppercase mb-12">
+                GENERATE<br/>
+                A FREE<br/>
+                GROWTH<br/>
+                AUDIT*
+              </h1>
+              
+              <div className="space-y-3 font-medium text-lg md:text-xl tracking-tight opacity-90 max-w-md">
+                <p>1. Enter your target URL and context.</p>
+                <p>2. Provide your access code.</p>
+                <p>3. Our AI agent runs a deep analysis.</p>
+                <p>4. Get actionable growth insights instantly.</p>
+              </div>
+            </div>
+
+            {/* Right Side: Form */}
+            <div className="flex-1 lg:max-w-md xl:max-w-lg lg:mt-[2rem]">
+              <form onSubmit={startAnalysis} className="space-y-8">
+                <div className="space-y-2">
+                  <label className="block text-lg font-medium tracking-tight">Website URL</label>
+                  <input
+                    type="url"
+                    required
+                    placeholder="https://example.com"
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    className="w-full brutalist-input px-4 py-4 md:py-5 text-lg"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-lg font-medium tracking-tight">Context / Goal</label>
+                  <textarea
+                    placeholder="Provide context on your goals..."
+                    value={context}
+                    onChange={(e) => setContext(e.target.value)}
+                    className="w-full brutalist-input px-4 py-4 text-lg h-40 resize-none"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-lg font-medium tracking-tight">Access Code</label>
+                  <input
+                    type="password"
+                    required
+                    placeholder="Required"
+                    value={accessCode}
+                    onChange={(e) => setAccessCode(e.target.value)}
+                    className="w-full brutalist-input px-4 py-4 md:py-5 text-lg"
+                  />
+                </div>
+
+                <button 
+                  type="submit" 
+                  disabled={status === "running"}
+                  className="brutalist-button w-full sm:w-auto px-10 py-5 text-lg flex items-center justify-center gap-3 disabled:opacity-50"
+                >
+                  {status === "running" ? (
+                    <>Generating <Loader2 className="w-5 h-5 animate-spin" /></>
+                  ) : (
+                    <>Run Growth Audit <ArrowRight className="w-5 h-5" /></>
+                  )}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Report View */}
+        {jobId && (
+          <div className="w-full flex flex-col lg:flex-row gap-8 lg:gap-12 animate-in fade-in duration-500">
+            {/* Left Side: Report & Logs */}
+            <div className="flex-1 flex flex-col gap-6 max-w-full overflow-hidden">
+              <div className="flex items-center justify-between border-b border-[#171717] pb-4">
+                <div className="flex items-center gap-4">
+                  <button onClick={resetAnalysis} className="hover:opacity-60 transition-opacity">
+                    <ArrowLeft className="w-6 h-6" />
+                  </button>
+                  <h2 className="text-2xl font-bold tracking-tight uppercase">Audit Report</h2>
+                </div>
+                {status === "running" && (
+                  <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-[#171717]">
+                    <Loader2 className="w-4 h-4 animate-spin" /> Analyzing
+                  </div>
+                )}
+              </div>
+              
+              {report && (
+                <div 
+                  ref={reportRef}
+                  onMouseUp={handleMouseUp}
+                  className="prose prose-neutral max-w-none 
+                    prose-headings:font-bold prose-headings:tracking-tight prose-headings:uppercase
+                    prose-h1:text-4xl prose-h2:text-2xl prose-h3:text-xl
+                    prose-p:text-lg prose-p:leading-relaxed prose-p:tracking-tight
+                    prose-a:text-emerald-700 prose-a:underline prose-a:decoration-2
+                    bg-white border border-[#171717] p-8 md:p-12 shadow-[4px_4px_0px_0px_rgba(23,23,23,1)]
+                    relative selection:bg-[#cdff71] selection:text-[#171717]"
+                >
+                  {renderedReport}
+                </div>
+              )}
+
+              <div className="bg-white border border-[#171717] overflow-hidden shadow-[4px_4px_0px_0px_rgba(23,23,23,1)] mt-8">
+                <div className="bg-[#171717] text-white px-4 py-2 font-mono text-sm font-bold tracking-wider uppercase flex items-center gap-2">
+                  <Terminal className="w-4 h-4" /> Activity Log
+                </div>
+                <div className="p-4 bg-black text-emerald-400 font-mono text-sm h-64 overflow-y-auto whitespace-pre-wrap">
+                  {liveLogs || "Initializing agent..."}
+                  <div ref={logsEndRef} />
+                </div>
+              </div>
+            </div>
+
+            {/* Right Side: Chat */}
+            <div className="w-full lg:w-[450px] shrink-0 flex flex-col h-[800px] border border-[#171717] bg-white shadow-[4px_4px_0px_0px_rgba(23,23,23,1)]">
+              <div className="bg-[#171717] text-white p-4 font-bold uppercase tracking-widest flex items-center gap-2">
+                <Bot className="w-5 h-5" /> Ask Follow-Up
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-4 space-y-6 bg-[#f9f9f9]">
+                {chatMessages.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-50">
+                    <MessageSquare className="w-12 h-12" />
+                    <p className="font-medium tracking-tight">Ask questions about the audit.</p>
+                  </div>
+                ) : (
+                  chatMessages.map((msg, i) => (
+                    <div key={i} className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}>
+                      <div className={`
+                        max-w-[85%] p-4 text-sm md:text-base tracking-tight
+                        ${msg.role === "user" 
+                          ? "bg-[#171717] text-white rounded-l-2xl rounded-tr-2xl" 
+                          : "bg-white border border-[#171717] text-[#171717] rounded-r-2xl rounded-tl-2xl shadow-[2px_2px_0px_0px_rgba(23,23,23,1)]"
+                        }
+                      `}>
+                        <ReactMarkdown 
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            p: ({node, ...props}) => <p className="last:mb-0" {...props} />,
+                            a: ({node, ...props}) => <a className="underline decoration-2 font-bold" target="_blank" rel="noreferrer" {...props} />
+                          }}
+                        >
+                          {msg.content}
+                        </ReactMarkdown>
+                      </div>
+                      <div className="flex gap-2 mt-2 opacity-50 hover:opacity-100 transition-opacity">
+                        <button onClick={() => navigator.clipboard.writeText(msg.content)} className="p-1 hover:bg-black/10 rounded">
+                          <Copy className="w-3 h-3" />
+                        </button>
+                        {msg.role === "user" && i === chatMessages.length - 2 && (
+                          <button onClick={() => setChatInput(msg.content)} className="p-1 hover:bg-black/10 rounded">
+                            <Pencil className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+                {isChatLoading && (
+                  <div className="flex items-center gap-2 text-sm font-medium tracking-tight animate-pulse">
+                    <Loader2 className="w-4 h-4 animate-spin" /> Thinking...
+                  </div>
+                )}
+                <div ref={chatEndRef} />
+              </div>
+
+              <div className="p-4 border-t border-[#171717] bg-white">
+                {chatContext && (
+                  <div className="mb-3 p-3 bg-neutral-100 border border-[#171717] text-sm relative">
+                    <button onClick={clearChatContext} className="absolute top-2 right-2 hover:opacity-60">
+                      <X className="w-4 h-4" />
+                    </button>
+                    <div className="font-bold text-xs uppercase tracking-widest mb-1 text-emerald-700">Context</div>
+                    <p className="italic line-clamp-3 opacity-80 tracking-tight">&quot;{selectedTextSnippet}&quot;</p>
+                  </div>
+                )}
+                <form onSubmit={handleChatSubmit} className="relative">
+                  <input
+                    type="text"
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    placeholder="Ask a question..."
+                    disabled={isChatLoading || !jobId}
+                    className="w-full brutalist-input pl-4 pr-12 py-4 text-base disabled:opacity-50"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isChatLoading || !chatInput.trim()}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-[#171717] text-white hover:opacity-80 disabled:opacity-50 transition-opacity"
+                  >
+                    <Send className="w-4 h-4" />
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      <footer className="w-full py-8 text-center text-xs md:text-sm text-neutral-500 dark:text-neutral-500 font-medium print:hidden">
-        Designed & Built by <a href="https://github.com/pundhiranshul" target="_blank" rel="noopener noreferrer" className="text-emerald-600 dark:text-emerald-500 hover:underline hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors">Anshul Pundhir</a>
-      </footer>
+      {/* Tooltip */}
+      <div 
+        className={`tooltip-container absolute z-50 transform -translate-x-1/2 transition-all duration-200 ${selectionRect ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'}`}
+        style={{ top: selectionRect?.top ?? 0, left: selectionRect?.left ?? 0 }}
+      >
+        <button 
+          onMouseDown={(e) => { e.preventDefault(); handleAskFollowUp(); }}
+          className="flex items-center gap-2 brutalist-button px-4 py-2 shadow-[4px_4px_0px_0px_rgba(23,23,23,0.5)] border border-white"
+        >
+          <MessageSquare className="w-4 h-4" /> Ask a follow up
+        </button>
+      </div>
     </main>
   );
 }
