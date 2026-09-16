@@ -250,13 +250,30 @@ export default function Home() {
     }
   };
 
-  const viewPastReport = (reportJobId: string) => {
+  const viewPastReport = async (reportJobId: string) => {
     setJobId(reportJobId);
-    setStatus("completed");
+    setStatus("running");
     setLiveLogs("");
     setReport("");
     setChatMessages([]);
     setChatContext("");
+
+    try {
+      const res = await fetch(`/api/status/${reportJobId}`, {
+        headers: { "x-access-code": accessCode }
+      });
+      if (res.status === 401) {
+        setStatus("error");
+        return;
+      }
+      const data = await res.json();
+      if (data.live_logs) setLiveLogs(data.live_logs);
+      if (data.final_report) setReport(data.final_report);
+      setStatus(data.status);
+    } catch (e) {
+      console.error(e);
+      setStatus("error");
+    }
   };
 
   // Text selection handler
