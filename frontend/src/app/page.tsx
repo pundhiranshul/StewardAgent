@@ -21,6 +21,12 @@ export default function Home() {
   
   const [appMode, setAppMode] = useState<"initial" | "new" | "past">("initial");
   const [pastReports, setPastReports] = useState<{job_id: string; domain: string; created_at: number}[]>([]);
+  const [accessCodeError, setAccessCodeError] = useState(false);
+
+  const triggerAccessCodeError = () => {
+    setAccessCodeError(false);
+    setTimeout(() => setAccessCodeError(true), 10);
+  };
 
   const [status, setStatus] = useState<"idle" | "running" | "completed" | "error">("idle");
   const [jobId, setJobId] = useState<string | null>(null);
@@ -144,7 +150,7 @@ export default function Home() {
       });
 
       if (res.status === 401) {
-        alert("Invalid Access Code. Please enter a valid code.");
+        triggerAccessCodeError();
         setStatus("idle");
         return;
       }
@@ -209,7 +215,7 @@ export default function Home() {
 
   const fetchPastReports = async (silent = false) => {
     if (!accessCode) {
-      if (!silent) alert("Please enter an access code");
+      if (!silent) triggerAccessCodeError();
       return;
     }
     try {
@@ -217,7 +223,7 @@ export default function Home() {
         headers: { "x-access-code": accessCode }
       });
       if (res.status === 401) {
-        if (!silent) alert("Invalid Access Code");
+        if (!silent) triggerAccessCodeError();
         return;
       }
       const data = await res.json();
@@ -612,8 +618,8 @@ export default function Home() {
                   type="password" 
                   placeholder="Enter Access Code"
                   value={accessCode}
-                  onChange={(e) => setAccessCode(e.target.value)}
-                  className="w-full bg-white/80 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-3 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-sm"
+                  onChange={(e) => { setAccessCode(e.target.value); setAccessCodeError(false); }}
+                  className={`w-full bg-white/80 dark:bg-neutral-800/80 border rounded-xl px-4 py-3 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all shadow-sm ${accessCodeError ? 'border-rose-500 text-rose-500 animate-shake focus:border-rose-500 focus:ring-rose-500/50' : 'border-neutral-200 dark:border-neutral-700 focus:border-emerald-500'}`}
                 />
                 <button 
                   onClick={() => fetchPastReports(false)}
@@ -717,7 +723,7 @@ export default function Home() {
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-600 dark:text-emerald-500"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                   Access Code *
                 </label>
-                <input required type="password" placeholder="Required to generate report" value={accessCode} onChange={(e) => setAccessCode(e.target.value)} className="w-full bg-white/80 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-3 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-sm" />
+                <input required type="password" placeholder="Required to generate report" value={accessCode} onChange={(e) => { setAccessCode(e.target.value); setAccessCodeError(false); }} className={`w-full bg-white/80 dark:bg-neutral-800/80 border rounded-xl px-4 py-3 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all shadow-sm ${accessCodeError ? 'border-rose-500 text-rose-500 animate-shake focus:border-rose-500 focus:ring-rose-500/50' : 'border-neutral-200 dark:border-neutral-700 focus:border-emerald-500'}`} />
               </div>
 
               <button type="submit" className="mt-2 w-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-200 font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-md">
