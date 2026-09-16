@@ -207,9 +207,9 @@ export default function Home() {
     setJobId(null);
   };
 
-  const fetchPastReports = async () => {
+  const fetchPastReports = async (silent = false) => {
     if (!accessCode) {
-      alert("Please enter an access code");
+      if (!silent) alert("Please enter an access code");
       return;
     }
     try {
@@ -217,16 +217,23 @@ export default function Home() {
         headers: { "x-access-code": accessCode }
       });
       if (res.status === 401) {
-        alert("Invalid Access Code");
+        if (!silent) alert("Invalid Access Code");
         return;
       }
       const data = await res.json();
       setPastReports(data);
     } catch (e) {
       console.error(e);
-      alert("Failed to fetch past reports");
+      if (!silent) alert("Failed to fetch past reports");
     }
   };
+
+  useEffect(() => {
+    if (appMode === "past" && accessCode) {
+      fetchPastReports(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appMode, status]);
 
   const deleteReport = async (jobIdToDelete: string) => {
     if (!confirm("Are you sure you want to delete this report?")) return;
@@ -609,7 +616,7 @@ export default function Home() {
                   className="w-full bg-white/80 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-3 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-sm"
                 />
                 <button 
-                  onClick={fetchPastReports}
+                  onClick={() => fetchPastReports(false)}
                   className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-8 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md whitespace-nowrap"
                 >
                   Fetch
