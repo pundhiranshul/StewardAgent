@@ -723,41 +723,41 @@ export default function Home() {
               </div>
             </div>
 
-            <form onSubmit={startAnalysis} className="bg-white/70 dark:bg-neutral-900/70 backdrop-blur-2xl border border-white/80 dark:border-neutral-800 rounded-2xl p-5 md:p-6 shadow-2xl animate-in fade-in duration-500 flex flex-col gap-3 relative overflow-hidden">
+            <form onSubmit={startAnalysis} className="bg-white/70 dark:bg-neutral-900/70 backdrop-blur-2xl border border-white/80 dark:border-neutral-800 rounded-2xl p-5 md:p-6 shadow-2xl animate-in fade-in duration-500 flex flex-col gap-3.5 relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-cyan-400 opacity-90" />
 
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 flex items-center gap-1.5">
-                  <Globe className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-500" /> Target Website, Product, or Brand Name *
+              <div className="space-y-1.5">
+                <label className="text-sm font-bold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
+                  <Globe className="w-4 h-4 text-emerald-600 dark:text-emerald-500" /> Target Website, Product, or Brand Name *
                 </label>
                 <input required type="text" placeholder="e.g., https://example.com or Nike" value={url} onChange={(e) => setUrl(e.target.value)} className="w-full bg-white/80 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-xs" />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 flex items-center gap-1.5">
-                    <PlaySquare className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-500" /> Play Store URL
+                <div className="space-y-1.5">
+                  <label className="text-sm font-bold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
+                    <PlaySquare className="w-4 h-4 text-emerald-600 dark:text-emerald-500" /> Play Store URL
                   </label>
                   <input type="url" placeholder="Optional" value={playStore} onChange={(e) => setPlayStore(e.target.value)} className="w-full bg-white/80 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-xs" />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 flex items-center gap-1.5">
-                    <Smartphone className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-500" /> App Store URL
+                <div className="space-y-1.5">
+                  <label className="text-sm font-bold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
+                    <Smartphone className="w-4 h-4 text-emerald-600 dark:text-emerald-500" /> App Store URL
                   </label>
                   <input type="url" placeholder="Optional" value={appStore} onChange={(e) => setAppStore(e.target.value)} className="w-full bg-white/80 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-xs" />
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 flex items-center gap-1.5">
-                  <FileText className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-500" /> Additional Context (Optional)
+              <div className="space-y-1.5">
+                <label className="text-sm font-bold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-500" /> Additional Context (Optional)
                 </label>
-                <textarea rows={2} placeholder="Specific focus areas, ICP, target competitors..." value={context} onChange={(e) => setContext(e.target.value)} className="w-full bg-white/80 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700 rounded-lg px-3 py-1.5 text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all resize-none shadow-xs" />
+                <textarea rows={2} placeholder="Specific focus areas, ICP, target competitors..." value={context} onChange={(e) => setContext(e.target.value)} className="w-full bg-white/80 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all resize-none shadow-xs" />
               </div>
 
-              <div className="space-y-1 pt-1 border-t border-neutral-200/80 dark:border-neutral-800">
-                <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 flex items-center gap-1.5">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-600 dark:text-emerald-500"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+              <div className="space-y-1.5 pt-1 border-t border-neutral-200/80 dark:border-neutral-800">
+                <label className="text-sm font-bold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-600 dark:text-emerald-500"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                   Access Code *
                 </label>
                 <input required type="password" placeholder="Required to generate report" value={accessCode} onChange={(e) => { setAccessCode(e.target.value); setAccessCodeError(false); }} className={`w-full bg-white/80 dark:bg-neutral-800/80 border rounded-lg px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all shadow-xs ${accessCodeError ? 'border-rose-500 text-rose-500 animate-shake focus:border-rose-500 focus:ring-rose-500/50' : 'border-neutral-200 dark:border-neutral-700 focus:border-emerald-500'}`} />
@@ -766,17 +766,7 @@ export default function Home() {
                 )}
               </div>
 
-              <div className="flex items-center justify-between px-1 py-0.5 text-xs text-neutral-500 dark:text-neutral-400">
-                <span className="flex items-center gap-1.5 font-medium text-[11px]">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  Kaggle Model Proxy Active
-                </span>
-                <span className="font-mono text-[11px] text-emerald-600 dark:text-emerald-400">
-                  Zero Direct Cost (AI Credits)
-                </span>
-              </div>
-
-              <button type="submit" disabled={isStartingAnalysis} className="w-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-200 font-bold py-2.5 px-5 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-md disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer text-sm">
+              <button type="submit" disabled={isStartingAnalysis} className="w-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-200 font-bold py-2.5 px-5 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-md disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer text-sm mt-1">
                 {isStartingAnalysis ? <Loader2 className="w-4 h-4 animate-spin" /> : "Start Analysis"} {!isStartingAnalysis && <ArrowRight className="w-4 h-4" />}
               </button>
             </form>
