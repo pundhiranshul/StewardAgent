@@ -21,6 +21,7 @@ export default function Home() {
   const [accessCode, setAccessCode] = useState("");
   const [showAccessCode, setShowAccessCode] = useState(false);
   const [aiModel, setAiModel] = useState("gemini-3.7-flash");
+  const [reasoningEffort, setReasoningEffort] = useState("high");
   
   useEffect(() => {
     const saved = localStorage.getItem("steward_ai_model");
@@ -33,11 +34,20 @@ export default function Home() {
     if (savedCode) {
       setAccessCode(savedCode);
     }
+    const savedEffort = localStorage.getItem("steward_reasoning_effort");
+    if (savedEffort) {
+      setReasoningEffort(savedEffort);
+    }
   }, []);
 
   const handleModelChange = (model: string) => {
     setAiModel(model);
     localStorage.setItem("steward_ai_model", model);
+  };
+
+  const handleReasoningEffortChange = (effort: string) => {
+    setReasoningEffort(effort);
+    localStorage.setItem("steward_reasoning_effort", effort);
   };
   
   const [appMode, setAppMode] = useState<"initial" | "new" | "past">("initial");
@@ -169,7 +179,8 @@ export default function Home() {
           play_store_url: playStore,
           app_store_url: appStore,
           additional_info: context,
-          model: aiModel
+          model: aiModel,
+          reasoning_effort: reasoningEffort
         })
       });
 
@@ -533,7 +544,8 @@ export default function Home() {
         body: JSON.stringify({
           messages: newMessages,
           context: chatContext,
-          model: aiModel
+          model: aiModel,
+          reasoning_effort: reasoningEffort
         })
       });
 
@@ -675,7 +687,12 @@ export default function Home() {
               )}
             </>
           )}
-          <CustomModelSelect value={aiModel} onChange={handleModelChange} />
+          <CustomModelSelect
+            value={aiModel}
+            onChange={handleModelChange}
+            reasoningEffort={reasoningEffort}
+            onReasoningEffortChange={handleReasoningEffortChange}
+          />
           <ThemeToggle />
         </div>
       </header>

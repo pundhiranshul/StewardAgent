@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { ChevronDown, Sparkles, Zap, Cpu, Check, ShieldCheck } from "lucide-react";
+import { ChevronDown, Sparkles, Zap, Cpu, Check, ShieldCheck, Brain } from "lucide-react";
 
 export const AVAILABLE_AI_MODELS = [
   // Low Cost / Fast
@@ -32,6 +32,30 @@ export const AVAILABLE_AI_MODELS = [
   "claude-sonnet-5@default",
   "gpt-6-astra",
   "deepseek-r1-0528"
+];
+
+export const REASONING_EFFORT_OPTIONS = [
+  {
+    id: "high",
+    label: "Max",
+    badge: "Default / Deep",
+    desc: "Max reasoning depth for thorough, highly credible reports",
+    tagColor: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
+  },
+  {
+    id: "medium",
+    label: "Balanced",
+    badge: "Medium",
+    desc: "Balanced multi-step reasoning and latency",
+    tagColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+  },
+  {
+    id: "low",
+    label: "Fast",
+    badge: "Low",
+    desc: "Fast draft iterations with minimal reasoning tokens",
+    tagColor: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+  }
 ];
 
 export const MODEL_TIER_CONFIG = [
@@ -93,10 +117,18 @@ export const MODEL_TIER_CONFIG = [
 interface CustomModelSelectProps {
   value: string;
   onChange: (modelId: string) => void;
+  reasoningEffort?: string;
+  onReasoningEffortChange?: (effort: string) => void;
   disabled?: boolean;
 }
 
-export function CustomModelSelect({ value, onChange, disabled }: CustomModelSelectProps) {
+export function CustomModelSelect({
+  value,
+  onChange,
+  reasoningEffort = "high",
+  onReasoningEffortChange,
+  disabled
+}: CustomModelSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -120,27 +152,92 @@ export function CustomModelSelect({ value, onChange, disabled }: CustomModelSele
     return value.split("/").pop() || value;
   };
 
+  const getReasoningBadge = () => {
+    switch (reasoningEffort) {
+      case "low":
+        return { label: "Fast", color: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/25" };
+      case "medium":
+        return { label: "Med", color: "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/25" };
+      case "high":
+      default:
+        return { label: "Max Thinking", color: "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/25" };
+    }
+  };
+
+  const effortBadge = getReasoningBadge();
+
   return (
     <div className="relative inline-block text-left" ref={containerRef}>
       <button
         type="button"
         disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}
-        className="h-9 shrink-0 flex items-center gap-2.5 px-3 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white/80 dark:bg-neutral-900/80 hover:bg-neutral-100 dark:hover:bg-neutral-800/80 backdrop-blur-sm transition-all text-xs text-neutral-800 dark:text-neutral-200 font-medium shadow-xs focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-600 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-        title="Select AI Model"
+        className="h-9 shrink-0 flex items-center gap-2 px-3 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white/80 dark:bg-neutral-900/80 hover:bg-neutral-100 dark:hover:bg-neutral-800/80 backdrop-blur-sm transition-all text-xs text-neutral-800 dark:text-neutral-200 font-medium shadow-xs focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-600 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+        title="Select AI Model & Reasoning Effort"
       >
         <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
           <Sparkles className="w-3.5 h-3.5" />
           <span className="text-[11px] font-semibold uppercase tracking-wider">AI Model</span>
         </span>
         <span className="text-neutral-300 dark:text-neutral-700">|</span>
-        <span className="font-mono text-xs max-w-[170px] truncate">{getSelectedLabel()}</span>
+        <span className="font-mono text-xs max-w-[140px] sm:max-w-[170px] truncate">{getSelectedLabel()}</span>
+        <span className={`hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold tracking-wide border ${effortBadge.color}`}>
+          <Brain className="w-2.5 h-2.5" />
+          <span>{effortBadge.label}</span>
+        </span>
         <ChevronDown className={`w-3.5 h-3.5 text-neutral-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-84 sm:w-96 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-2xl z-50 overflow-hidden backdrop-blur-md animate-in fade-in-0 zoom-in-95 duration-150">
-          <div className="px-3.5 py-2.5 border-b border-neutral-100 dark:border-neutral-800/80 bg-neutral-50/70 dark:bg-neutral-950/40">
+        <div className="absolute right-0 mt-2 w-84 sm:w-100 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-2xl z-50 overflow-hidden backdrop-blur-md animate-in fade-in-0 zoom-in-95 duration-150">
+          {/* Reasoning Effort Control (Default: Max) */}
+          <div className="p-3 border-b border-neutral-100 dark:border-neutral-800/80 bg-neutral-50/70 dark:bg-neutral-950/40">
+            <div className="flex items-center justify-between mb-1">
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-neutral-900 dark:text-neutral-100">
+                <Brain className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                Reasoning Effort (Thinking Depth)
+              </span>
+              <span className="text-[10px] font-semibold text-purple-600 dark:text-purple-400 font-mono">
+                {reasoningEffort === "high" ? "Max (Deep Thinking)" : reasoningEffort === "medium" ? "Medium (Balanced)" : "Low (Fast)"}
+              </span>
+            </div>
+            <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mb-2">
+              Default: <strong>Max</strong>. Reports require high credibility; deep reasoning produces thorough behavioral synthesis even if it takes more time.
+            </p>
+
+            <div className="grid grid-cols-3 gap-1.5">
+              {REASONING_EFFORT_OPTIONS.map((opt) => {
+                const isSelected = (reasoningEffort || "high") === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => onReasoningEffortChange && onReasoningEffortChange(opt.id)}
+                    className={`flex flex-col items-center justify-center p-2 rounded-lg border text-center transition-all cursor-pointer ${
+                      isSelected
+                        ? "border-purple-500 bg-purple-50/90 dark:bg-purple-950/50 text-purple-900 dark:text-purple-100 shadow-xs ring-1 ring-purple-500/30"
+                        : "border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800/50 text-neutral-700 dark:text-neutral-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs font-bold">{opt.label}</span>
+                      {opt.id === "high" && (
+                        <span className="text-[9px] px-1 py-0.2 rounded bg-purple-500/20 text-purple-700 dark:text-purple-300 font-bold">
+                          ★
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[9px] text-neutral-500 dark:text-neutral-400 mt-0.5 font-mono">
+                      {opt.badge}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* AI Models Header */}
+          <div className="px-3.5 py-2 border-b border-neutral-100 dark:border-neutral-800/80 bg-neutral-50/50 dark:bg-neutral-950/30">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-neutral-900 dark:text-neutral-100">AI Models (Lowest to Highest Cost)</span>
             </div>
@@ -149,7 +246,8 @@ export function CustomModelSelect({ value, onChange, disabled }: CustomModelSele
             </p>
           </div>
 
-          <div className="max-h-96 overflow-y-auto p-1.5 divide-y divide-neutral-100 dark:divide-neutral-800/60 scrollbar-thin">
+          {/* Models List */}
+          <div className="max-h-80 overflow-y-auto p-1.5 divide-y divide-neutral-100 dark:divide-neutral-800/60 scrollbar-thin">
             {MODEL_TIER_CONFIG.map((group) => {
               const Icon = group.icon;
               return (
