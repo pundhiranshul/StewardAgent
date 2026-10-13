@@ -24,6 +24,7 @@ chroma_db/
 *.jpg
 *.jpeg
 !frontend/public/logo.png
+!frontend/src/app/icon.png
 
 # IDEs
 .idea/
