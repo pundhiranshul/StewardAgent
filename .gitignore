@@ -50,3 +50,5 @@ Reports/
 # Scratch/Misc
 removed_keys.txt
 *.log
+*.deb
+rewrite_*.py
