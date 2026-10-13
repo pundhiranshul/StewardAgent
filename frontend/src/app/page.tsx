@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { ArrowRight, Bot, Loader2, PlaySquare, Smartphone, Globe, Terminal, FileText, CheckCircle2, Square, ArrowLeft, MessageSquare, X, Send, Copy, Pencil } from "lucide-react";
+import { ArrowRight, Bot, Loader2, PlaySquare, Smartphone, Globe, Terminal, FileText, CheckCircle2, Square, ArrowLeft, MessageSquare, X, Send, Copy, Pencil, Eye, EyeOff } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CustomModelSelect } from "@/components/CustomModelSelect";
 import ReactMarkdown from 'react-markdown';
@@ -19,6 +19,7 @@ export default function Home() {
   const [appStore, setAppStore] = useState("");
   const [context, setContext] = useState("");
   const [accessCode, setAccessCode] = useState("");
+  const [showAccessCode, setShowAccessCode] = useState(false);
   const [aiModel, setAiModel] = useState("gemini-3.7-flash");
   
   useEffect(() => {
@@ -27,6 +28,10 @@ export default function Home() {
       const cleanModel = saved.includes("/") ? saved.split("/").pop()! : saved;
       setAiModel(cleanModel);
       localStorage.setItem("steward_ai_model", cleanModel);
+    }
+    const savedCode = localStorage.getItem("steward_access_code");
+    if (savedCode) {
+      setAccessCode(savedCode);
     }
   }, []);
 
@@ -41,6 +46,7 @@ export default function Home() {
   const [isStartingAnalysis, setIsStartingAnalysis] = useState(false);
 
   const triggerAccessCodeError = () => {
+    localStorage.removeItem("steward_access_code");
     setAccessCodeError(false);
     setTimeout(() => setAccessCodeError(true), 10);
   };
@@ -174,6 +180,8 @@ export default function Home() {
         return;
       }
 
+      localStorage.setItem("steward_access_code", accessCode);
+
       const data = await res.json();
       setStatus("running");
       setJobId(data.job_id);
@@ -247,6 +255,7 @@ export default function Home() {
         if (!silent) triggerAccessCodeError();
         return;
       }
+      localStorage.setItem("steward_access_code", accessCode);
       const data = await res.json();
       setPastReports(data);
     } catch (e) {
@@ -760,7 +769,25 @@ export default function Home() {
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-600 dark:text-emerald-500"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                   Access Code *
                 </label>
-                <input required type="password" placeholder="Required to generate report" value={accessCode} onChange={(e) => { setAccessCode(e.target.value); setAccessCodeError(false); }} className={`w-full bg-white/80 dark:bg-neutral-800/80 border rounded-lg px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all shadow-xs ${accessCodeError ? 'border-rose-500 text-rose-500 animate-shake focus:border-rose-500 focus:ring-rose-500/50' : 'border-neutral-200 dark:border-neutral-700 focus:border-emerald-500'}`} />
+                <div className="relative">
+                  <input
+                    required
+                    type={showAccessCode ? "text" : "password"}
+                    placeholder="Required to generate report"
+                    value={accessCode}
+                    onChange={(e) => { setAccessCode(e.target.value); setAccessCodeError(false); }}
+                    className={`w-full bg-white/80 dark:bg-neutral-800/80 border rounded-lg pl-3 pr-10 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all shadow-xs ${accessCodeError ? 'border-rose-500 text-rose-500 animate-shake focus:border-rose-500 focus:ring-rose-500/50' : 'border-neutral-200 dark:border-neutral-700 focus:border-emerald-500'}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAccessCode(!showAccessCode)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 p-1 transition-colors cursor-pointer"
+                    title={showAccessCode ? "Hide access code" : "Show access code"}
+                    aria-label={showAccessCode ? "Hide access code" : "Show access code"}
+                  >
+                    {showAccessCode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
                 {accessCodeError && (
                   <p className="text-rose-500 text-xs mt-0.5 px-1 animate-in fade-in">Invalid access code. Please try again.</p>
                 )}
@@ -777,13 +804,24 @@ export default function Home() {
       {status === "idle" && appMode === "past" && (
         <div className="flex-1 min-h-0 flex flex-col justify-center max-w-4xl w-full mx-auto px-4 py-2 gap-3 print:hidden animate-in fade-in duration-500">
           <div className="flex items-center gap-3 bg-white/70 dark:bg-neutral-900/70 backdrop-blur-2xl border border-white/80 dark:border-neutral-800 rounded-2xl p-4 shadow-xl w-full">
-            <input 
-              type="password" 
-              placeholder="Enter Access Code to view past reports"
-              value={accessCode}
-              onChange={(e) => { setAccessCode(e.target.value); setAccessCodeError(false); }}
-              className={`flex-1 bg-white/80 dark:bg-neutral-800/80 border rounded-xl px-4 py-2.5 text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all shadow-xs ${accessCodeError ? 'border-rose-500 text-rose-500 animate-shake focus:border-rose-500 focus:ring-rose-500/50' : 'border-neutral-200 dark:border-neutral-700 focus:border-emerald-500'}`}
-            />
+            <div className="relative flex-1">
+              <input 
+                type={showAccessCode ? "text" : "password"} 
+                placeholder="Enter Access Code to view past reports"
+                value={accessCode}
+                onChange={(e) => { setAccessCode(e.target.value); setAccessCodeError(false); }}
+                className={`w-full bg-white/80 dark:bg-neutral-800/80 border rounded-xl pl-4 pr-11 py-2.5 text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all shadow-xs ${accessCodeError ? 'border-rose-500 text-rose-500 animate-shake focus:border-rose-500 focus:ring-rose-500/50' : 'border-neutral-200 dark:border-neutral-700 focus:border-emerald-500'}`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowAccessCode(!showAccessCode)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 p-1 transition-colors cursor-pointer"
+                title={showAccessCode ? "Hide access code" : "Show access code"}
+                aria-label={showAccessCode ? "Hide access code" : "Show access code"}
+              >
+                {showAccessCode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
             <button 
               onClick={() => fetchPastReports(false)}
               className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-6 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md whitespace-nowrap text-sm cursor-pointer"
