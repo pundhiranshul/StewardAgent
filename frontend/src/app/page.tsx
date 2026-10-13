@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { ArrowRight, Bot, Loader2, PlaySquare, Smartphone, Globe, Terminal, FileText, CheckCircle2, Square, ArrowLeft, MessageSquare, X, Send, Copy, Pencil } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { CustomModelSelect } from "@/components/CustomModelSelect";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -18,6 +19,17 @@ export default function Home() {
   const [appStore, setAppStore] = useState("");
   const [context, setContext] = useState("");
   const [accessCode, setAccessCode] = useState("");
+  const [aiModel, setAiModel] = useState("google/gemini-3.7-flash");
+  
+  useEffect(() => {
+    const saved = localStorage.getItem("steward_ai_model");
+    if (saved) setAiModel(saved);
+  }, []);
+
+  const handleModelChange = (model: string) => {
+    setAiModel(model);
+    localStorage.setItem("steward_ai_model", model);
+  };
   
   const [appMode, setAppMode] = useState<"initial" | "new" | "past">("initial");
   const [pastReports, setPastReports] = useState<{job_id: string; domain: string; created_at: number}[]>([]);
@@ -146,7 +158,8 @@ export default function Home() {
           url,
           play_store_url: playStore,
           app_store_url: appStore,
-          additional_info: context
+          additional_info: context,
+          model: aiModel
         })
       });
 
@@ -506,7 +519,8 @@ export default function Home() {
         },
         body: JSON.stringify({
           messages: newMessages,
-          context: chatContext
+          context: chatContext,
+          model: aiModel
         })
       });
 
@@ -580,7 +594,8 @@ export default function Home() {
       <div className="max-w-[95%] 2xl:max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-16 flex flex-col gap-8 md:gap-12 relative z-10 print:py-0 print:px-0 print:max-w-none">
 
         <header className="flex flex-col items-center justify-center w-full animate-in fade-in slide-in-from-top-4 duration-700 print:hidden relative">
-          <div className="absolute top-0 right-0">
+          <div className="absolute top-0 right-0 flex items-center gap-2.5">
+            <CustomModelSelect value={aiModel} onChange={handleModelChange} />
             <ThemeToggle />
           </div>
           <div className="flex items-center gap-4">
@@ -738,7 +753,17 @@ export default function Home() {
                 )}
               </div>
 
-              <button type="submit" disabled={isStartingAnalysis} className="mt-2 w-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-200 font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-md disabled:opacity-70 disabled:cursor-not-allowed">
+              <div className="flex items-center justify-between px-1 py-1 text-xs text-neutral-500 dark:text-neutral-400">
+                <span className="flex items-center gap-1.5 font-medium">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  Kaggle Model Proxy Active
+                </span>
+                <span className="font-mono text-[11px] text-emerald-600 dark:text-emerald-400">
+                  Zero Direct Cost (AI Credits)
+                </span>
+              </div>
+
+              <button type="submit" disabled={isStartingAnalysis} className="mt-1 w-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-200 font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-md disabled:opacity-70 disabled:cursor-not-allowed">
                 {isStartingAnalysis ? <Loader2 className="w-5 h-5 animate-spin" /> : "Start Analysis"} {!isStartingAnalysis && <ArrowRight className="w-5 h-5" />}
               </button>
             </form>

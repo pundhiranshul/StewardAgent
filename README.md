@@ -34,7 +34,7 @@ Built by **Steward Agency**, this tool represents a modern approach to competiti
 Steward is built as a modern monorepo separating the user interface and the AI orchestration:
 
 * **Frontend (`/frontend`)**: Next.js (React 19), Tailwind CSS v4, Lucide Icons, and `next-themes` for intelligent dark mode.
-* **Backend (`/backend`)**: FastAPI, LangChain, Tavily Search, ChromaDB, and Groq (LLM).
+* **Backend (`/backend`)**: FastAPI, LangChain, Tavily Search, ChromaDB, and Kaggle Model Proxy (`google/gemini-3.7-flash` default with 21-model catalog across 4 tiers).
 
 ---
 
@@ -43,7 +43,7 @@ Steward is built as a modern monorepo separating the user interface and the AI o
 ### Prerequisites
 * Node.js v18+
 * Python 3.10+
-* API Keys for Groq and Tavily
+* Kaggle API credentials (`kaggle.json` or username & key for free AI Credits) and Tavily API key
 
 ### 1. Clone & Install
 Clone the repository to your local machine:
@@ -68,8 +68,10 @@ pip install -r requirements.txt
 
 Create a `.env` file in the `backend/` directory:
 ```env
-GROQ_API_KEYS=your_groq_key_1,your_groq_key_2
-TAVILY_API_KEY=your_tavily_key
+KAGGLE_USERNAME=your_kaggle_username
+KAGGLE_KEY=your_kaggle_key
+AI_MODEL=google/gemini-3.7-flash
+TAVILY_APIS=your_tavily_key
 ```
 
 ### 3. Frontend Setup

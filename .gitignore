@@ -42,9 +42,11 @@ eval_*.py
 
 # Node
 node_modules/
+.next/
 
 # Generated Reports
 Reports/
 
 # Scratch/Misc
 removed_keys.txt
+*.log
