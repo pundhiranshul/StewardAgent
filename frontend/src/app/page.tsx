@@ -65,6 +65,7 @@ export default function Home() {
   const [jobId, setJobId] = useState<string | null>(null);
   const [liveLogs, setLiveLogs] = useState<string>("");
   const [report, setReport] = useState<string>("");
+  const [isLogsOpen, setIsLogsOpen] = useState(true);
 
   const logsEndRef = useRef<HTMLDivElement>(null);
   const reportRef = useRef<HTMLDivElement>(null);
@@ -913,7 +914,11 @@ export default function Home() {
         <div className="flex-1 min-h-0 grid lg:grid-cols-3 gap-4 w-full max-w-[98%] 2xl:max-w-7xl mx-auto px-4 overflow-hidden pb-2 print:m-0 print:p-0 print:h-auto print:max-h-none print:overflow-visible">
           {/* Left 2 Cols: Report + Logs */}
           <div className="lg:col-span-2 flex flex-col gap-3 h-full overflow-hidden print:overflow-visible">
-            <details defaultOpen className="group bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden shadow-sm transition-all shrink-0 print:hidden">
+            <details
+              open={isLogsOpen}
+              onToggle={(e) => setIsLogsOpen(e.currentTarget.open)}
+              className="group bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden shadow-sm transition-all shrink-0 print:hidden"
+            >
               <summary className="px-4 py-2.5 cursor-pointer flex items-center justify-between list-none hover:bg-white dark:hover:bg-neutral-900 transition-colors">
                 <div className="flex items-center gap-2.5">
                   <Terminal className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-500" />
