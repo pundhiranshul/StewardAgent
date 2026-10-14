@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { ArrowRight, Bot, Loader2, PlaySquare, Smartphone, Globe, Terminal, FileText, CheckCircle2, Square, ArrowLeft, MessageSquare, X, Send, Copy, Pencil, Eye, EyeOff } from "lucide-react";
+import { ArrowRight, Bot, Loader2, PlaySquare, Smartphone, Globe, Terminal, FileText, CheckCircle2, Square, ArrowLeft, MessageSquare, X, Send, Copy, Pencil, Eye, EyeOff, Sparkles } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CustomModelSelect } from "@/components/CustomModelSelect";
 import ReactMarkdown from 'react-markdown';
@@ -44,6 +44,40 @@ export default function Home() {
   const [pastReports, setPastReports] = useState<{job_id: string; domain: string; created_at: number}[]>([]);
   const [accessCodeError, setAccessCodeError] = useState(false);
   const [isStartingAnalysis, setIsStartingAnalysis] = useState(false);
+
+  // Kaggle AI Credits state
+  const [kaggleCredits, setKaggleCredits] = useState<{
+    remaining: number;
+    total: number;
+    formatted: string;
+    formatted_detailed?: string;
+    daily?: { used: number; total: number; remaining: number };
+    monthly?: { used: number; total: number; remaining: number };
+  } | null>(null);
+  const [isAiCallActive, setIsAiCallActive] = useState(false);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [isUpdatingCredits, setIsUpdatingCredits] = useState(false);
+
+  const fetchKaggleCredits = async (codeToUse?: string) => {
+    const code = codeToUse || accessCode;
+    if (!code) return;
+    setIsUpdatingCredits(true);
+    try {
+      const res = await fetch("/api/kaggleCredits", {
+        headers: { "x-access-code": code }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setKaggleCredits(data);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to fetch Kaggle credits:", e);
+    } finally {
+      setIsUpdatingCredits(false);
+    }
+  };
 
   const triggerAccessCodeError = () => {
     localStorage.removeItem("steward_access_code");
@@ -157,6 +191,7 @@ export default function Home() {
     setReport("");
     setChatMessages([]);
     setChatContext("");
+    setIsAiCallActive(false);
 
     try {
       const res = await fetch("/api/analyze", {
@@ -185,8 +220,16 @@ export default function Home() {
       localStorage.setItem("steward_access_code", accessCode);
 
       const data = await res.json();
+      setIsGeneratingReport(true);
       setStatus("running");
       setJobId(data.job_id);
+
+      // Immediately show remaining Kaggle AI credits as soon as report generation is initiated
+      if (data.kaggle_credits && data.kaggle_credits.success) {
+        setKaggleCredits(data.kaggle_credits);
+      } else {
+        fetchKaggleCredits(accessCode);
+      }
     } catch (error) {
       console.error(error);
       setIsStartingAnalysis(false);
@@ -213,8 +256,17 @@ export default function Home() {
         if (data.live_logs) setLiveLogs(data.live_logs);
         if (data.final_report) setReport(data.final_report);
 
+        // Show loading/updating logo against credits once an AI call is made
+        if (data.ai_call_made) {
+          setIsAiCallActive(true);
+        }
+
         if (data.status === "completed" || data.status === "stopped") {
           setStatus("completed");
+          setIsAiCallActive(false);
+          // Update remaining AI credits when report finishes or stops
+          fetchKaggleCredits(accessCode);
+          setTimeout(() => fetchKaggleCredits(accessCode), 1500);
         }
       } catch (error) {
         console.error(error);
@@ -224,7 +276,7 @@ export default function Home() {
       interval = setInterval(checkStatus, 3000);
     }
     return () => clearInterval(interval);
-  }, [jobId, status]);
+  }, [jobId, status, accessCode]);
 
   const stopAnalysis = async () => {
     if (!jobId) return;
@@ -234,6 +286,10 @@ export default function Home() {
         headers: { "x-access-code": accessCode }
       });
       setStatus("completed");
+      setIsAiCallActive(false);
+      // Update remaining AI credits when stopped
+      fetchKaggleCredits(accessCode);
+      setTimeout(() => fetchKaggleCredits(accessCode), 1500);
     } catch (error) {
       console.error(error);
     }
@@ -242,6 +298,9 @@ export default function Home() {
   const resetAnalysis = () => {
     setStatus("idle");
     setJobId(null);
+    setIsGeneratingReport(false);
+    setIsAiCallActive(false);
+    setKaggleCredits(null);
   };
 
   const fetchPastReports = async (silent = false) => {
@@ -296,6 +355,9 @@ export default function Home() {
   };
 
   const viewPastReport = async (reportJobId: string) => {
+    setIsGeneratingReport(false);
+    setKaggleCredits(null);
+    setIsAiCallActive(false);
     setJobId(reportJobId);
     setStatus("running");
     setLiveLogs("");
@@ -678,6 +740,36 @@ export default function Home() {
               )}
             </>
           )}
+
+          {/* Kaggle AI Credits Pill: Shown ONLY on the report generation page after access code is verified */}
+          {isGeneratingReport && (status === "running" || status === "completed") && (
+            <div
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1 bg-white/80 dark:bg-neutral-800/80 backdrop-blur-md border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs shadow-xs transition-all animate-in fade-in select-none"
+              title={
+                kaggleCredits?.monthly
+                  ? `Daily Quota: $${kaggleCredits.daily?.remaining.toFixed(2)} / $${kaggleCredits.daily?.total.toFixed(2)} left\nMonthly Quota: $${kaggleCredits.monthly?.remaining.toFixed(2)} / $${kaggleCredits.monthly?.total.toFixed(2)} left`
+                  : "Remaining Kaggle AI Credits"
+              }
+            >
+              <div className="flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span className="text-neutral-600 dark:text-neutral-400 font-medium whitespace-nowrap">
+                  Remaining AI Credit:
+                </span>
+                <span className="font-mono font-bold text-neutral-900 dark:text-neutral-100 whitespace-nowrap">
+                  {kaggleCredits?.formatted || (kaggleCredits?.remaining !== undefined ? `$${kaggleCredits.remaining.toFixed(2)}` : "$10.00")}
+                </span>
+              </div>
+
+              {(isAiCallActive || isUpdatingCredits) && (
+                <div className="flex items-center gap-1 pl-1.5 border-l border-neutral-200 dark:border-neutral-700 text-emerald-600 dark:text-emerald-400 font-medium animate-in fade-in shrink-0">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-500" />
+                  <span className="text-[10px] font-semibold tracking-wide uppercase hidden md:inline">Updating</span>
+                </div>
+              )}
+            </div>
+          )}
+
           <CustomModelSelect
             value={aiModel}
             onChange={handleModelChange}
