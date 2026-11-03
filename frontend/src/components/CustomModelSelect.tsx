@@ -55,8 +55,8 @@ export const MODEL_TIER_CONFIG = [
     models: [
       { id: "gemini-3-flash-preview", label: "Gemini 3 Flash Preview", desc: "Early release preview model" },
       { id: "gemini-3.5-flash", label: "Gemini 3.5 Flash", desc: "High throughput general purpose" },
-      { id: "gemini-3.6-flash", label: "Gemini 3.6 Flash", desc: "Stable balanced intelligence" },
-      { id: "gemini-3.7-flash", label: "Gemini 3.7 Flash", desc: "Default balanced model for deep analysis & citations" },
+      { id: "gemini-3.6-flash", label: "Gemini 3.6 Flash", desc: "Default balanced model for deep analysis & citations" },
+      { id: "gemini-3.7-flash", label: "Gemini 3.7 Flash", desc: "High throughput general purpose" },
       { id: "gemini-3.8-flash", label: "Gemini 3.8 Flash", desc: "Latest high-speed reasoning flash model" },
       { id: "qwen3-next-80b-a3b-instruct", label: "Qwen 3 Next 80B", desc: "Instruction-tuned open weights model" },
       { id: "gpt-oss-120b", label: "GPT-OSS 120B", desc: "Open architecture large model" }
@@ -91,7 +91,7 @@ export const MODEL_TIER_CONFIG = [
 ];
 
 export function getDefaultModel(deleted: string[] = []): string {
-  const preferred = "gemini-3.7-flash";
+  const preferred = "gemini-3.6-flash";
   if (!deleted.includes(preferred)) return preferred;
   for (const group of MODEL_TIER_CONFIG) {
     for (const m of group.models) {
@@ -180,7 +180,7 @@ export function CustomModelSelect({
               )}
             </div>
             <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">
-              Select model for evidence analysis. Default: Gemini 3.7 Flash.
+              Select model for evidence analysis. Default: Gemini 3.6 Flash.
             </p>
           </div>
 
@@ -219,7 +219,7 @@ export function CustomModelSelect({
                           <div className="flex-1 pr-2 min-w-0">
                             <div className="flex items-center gap-1.5">
                               <span className="truncate">{m.label}</span>
-                              {m.id === "gemini-3.7-flash" && (
+                              {m.id === "gemini-3.6-flash" && (
                                 <span className={`text-[9px] px-1 py-0.2 rounded font-mono ${
                                   isSelected
                                     ? "bg-white/20 text-white dark:bg-neutral-900/20 dark:text-neutral-900"

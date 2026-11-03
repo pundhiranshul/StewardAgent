@@ -20,7 +20,7 @@ export default function Home() {
   const [context, setContext] = useState("");
   const [accessCode, setAccessCode] = useState("");
   const [showAccessCode, setShowAccessCode] = useState(false);
-  const [aiModel, setAiModel] = useState("gemini-3.7-flash");
+  const [aiModel, setAiModel] = useState("gemini-3.6-flash");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [deletedModels, setDeletedModels] = useState<string[]>([]);
@@ -941,8 +941,8 @@ export default function Home() {
             </div>
           )}
 
-          {/* Only show AI Model select after authentication or when viewing/running reports */}
-          {(isAuthenticated || isGeneratingReport || status === "running" || status === "completed") && (
+          {/* Only show AI Model select in header during active report analysis or report viewing (not on setup page where dedicated card exists) */}
+          {(status === "running" || status === "completed") && (
             <CustomModelSelect
               value={aiModel}
               onChange={handleModelChange}
@@ -1107,7 +1107,7 @@ export default function Home() {
                     Choose AI Model for Growth Report
                   </h3>
                   <p className="text-xs text-neutral-600 dark:text-neutral-400">
-                    By default, <span className="font-semibold text-neutral-900 dark:text-neutral-200">Gemini 3.7 Flash</span> is selected. Choose an alternative model or proceed with the recommended default.
+                    By default, <span className="font-semibold text-neutral-900 dark:text-neutral-200">Gemini 3.6 Flash</span> is selected. Choose an alternative model or proceed with the recommended default.
                   </p>
                 </div>
 
