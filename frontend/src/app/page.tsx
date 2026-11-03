@@ -1368,11 +1368,6 @@ export default function Home() {
                 <div className="text-right">
                   <p className="text-xs font-bold text-emerald-300/80 uppercase tracking-widest mb-1">Target Analysis</p>
                   <p className="text-xl font-black text-white">{url || "Custom Target"}</p>
-                  {(status === "completed" || creditsConsumed !== null) && (formattedConsumed || creditsConsumed !== null) && (
-                    <p className="text-xs font-mono text-rose-300 font-bold mt-0.5">
-                      AI Credit Consumed: {formattedConsumed || `$${Number(creditsConsumed).toFixed(2)}`}
-                    </p>
-                  )}
                   <p className="text-xs font-mono text-emerald-200/80 font-semibold mt-1">{new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
                 </div>
               </div>
