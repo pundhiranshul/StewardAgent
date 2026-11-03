@@ -90,12 +90,25 @@ export const MODEL_TIER_CONFIG = [
   }
 ];
 
+export function getDefaultModel(deleted: string[] = []): string {
+  const preferred = "gemini-3.7-flash";
+  if (!deleted.includes(preferred)) return preferred;
+  for (const group of MODEL_TIER_CONFIG) {
+    for (const m of group.models) {
+      if (!deleted.includes(m.id)) return m.id;
+    }
+  }
+  return preferred;
+}
+
 interface CustomModelSelectProps {
   value: string;
   onChange: (modelId: string) => void;
   reasoningEffort?: string;
   onReasoningEffortChange?: (effort: string) => void;
   disabled?: boolean;
+  deletedModels?: string[];
+  onDeleteModel?: (modelId: string) => void;
 }
 
 export function CustomModelSelect({
@@ -103,10 +116,17 @@ export function CustomModelSelect({
   onChange,
   reasoningEffort = "high",
   onReasoningEffortChange,
-  disabled
+  disabled,
+  deletedModels = [],
+  onDeleteModel
 }: CustomModelSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const activeTiers = MODEL_TIER_CONFIG.map((group) => ({
+    ...group,
+    models: group.models.filter((m) => !deletedModels.includes(m.id))
+  })).filter((group) => group.models.length > 0);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -147,21 +167,26 @@ export function CustomModelSelect({
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-84 sm:w-100 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-2xl z-50 overflow-hidden backdrop-blur-md animate-in fade-in-0 zoom-in-95 duration-150">
+        <div className="absolute right-0 mt-2 w-84 sm:w-104 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-2xl z-50 overflow-hidden backdrop-blur-md animate-in fade-in-0 zoom-in-95 duration-150">
 
           {/* AI Models Header */}
           <div className="px-3.5 py-2 border-b border-neutral-100 dark:border-neutral-800/80 bg-neutral-50/50 dark:bg-neutral-950/30">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-neutral-900 dark:text-neutral-100">AI Models (Lowest to Highest Cost)</span>
+              {deletedModels.length > 0 && (
+                <span className="text-[10px] text-rose-500 font-mono">
+                  {deletedModels.length} removed
+                </span>
+              )}
             </div>
             <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">
-              Sorted: Lowest to Highest Cost. Default: Gemini 3.7 Flash.
+              Select model for evidence analysis. Default: Gemini 3.7 Flash.
             </p>
           </div>
 
           {/* Models List */}
           <div className="max-h-80 overflow-y-auto p-1.5 divide-y divide-neutral-100 dark:divide-neutral-800/60 scrollbar-thin">
-            {MODEL_TIER_CONFIG.map((group) => {
+            {activeTiers.map((group) => {
               const Icon = group.icon;
               return (
                 <div key={group.tier} className="py-2 first:pt-1 last:pb-1">
@@ -179,18 +204,17 @@ export function CustomModelSelect({
                     {group.models.map((m) => {
                       const isSelected = value === m.id;
                       return (
-                        <button
+                        <div
                           key={m.id}
-                          type="button"
-                          onClick={() => {
-                            onChange(m.id);
-                            setIsOpen(false);
-                          }}
-                          className={`w-full flex items-start justify-between text-left px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer text-xs ${
+                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer text-xs ${
                             isSelected
                               ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 font-medium shadow-xs"
                               : "text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800/70"
                           }`}
+                          onClick={() => {
+                            onChange(m.id);
+                            setIsOpen(false);
+                          }}
                         >
                           <div className="flex-1 pr-2 min-w-0">
                             <div className="flex items-center gap-1.5">
@@ -213,8 +237,10 @@ export function CustomModelSelect({
                               {m.desc}
                             </p>
                           </div>
-                          {isSelected && <Check className="w-4 h-4 shrink-0 mt-0.5" />}
-                        </button>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {isSelected && <Check className="w-4 h-4 text-emerald-500" />}
+                          </div>
+                        </div>
                       );
                     })}
                   </div>

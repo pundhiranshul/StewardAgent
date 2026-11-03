@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { ArrowRight, Bot, Loader2, PlaySquare, Smartphone, Globe, Terminal, FileText, CheckCircle2, Square, ArrowLeft, MessageSquare, X, Send, Copy, Pencil, Eye, EyeOff, Sparkles } from "lucide-react";
+import { ArrowRight, Bot, Loader2, PlaySquare, Smartphone, Globe, Terminal, FileText, CheckCircle2, Square, ArrowLeft, MessageSquare, X, Send, Copy, Pencil, Eye, EyeOff, Sparkles, RotateCcw, AlertTriangle, Trash2, ShieldCheck } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { CustomModelSelect } from "@/components/CustomModelSelect";
+import { CustomModelSelect, getDefaultModel, AVAILABLE_AI_MODELS } from "@/components/CustomModelSelect";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -21,13 +21,44 @@ export default function Home() {
   const [accessCode, setAccessCode] = useState("");
   const [showAccessCode, setShowAccessCode] = useState(false);
   const [aiModel, setAiModel] = useState("gemini-3.7-flash");
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [deletedModels, setDeletedModels] = useState<string[]>([]);
+  const [failedModel, setFailedModel] = useState<string | null>(null);
+  const [isModelNotFoundError, setIsModelNotFoundError] = useState(false);
   
   useEffect(() => {
-    const saved = localStorage.getItem("steward_ai_model");
-    if (saved) {
-      const cleanModel = saved.includes("/") ? saved.split("/").pop()! : saved;
-      setAiModel(cleanModel);
-      localStorage.setItem("steward_ai_model", cleanModel);
+    // 1. Load deleted models from localStorage & backend
+    const savedDeleted = localStorage.getItem("steward_deleted_models");
+    let localDeleted: string[] = [];
+    if (savedDeleted) {
+      try {
+        localDeleted = JSON.parse(savedDeleted);
+        setDeletedModels(localDeleted);
+      } catch (e) {}
+    }
+
+    fetch("/api/deletedModels")
+      .then(res => res.json())
+      .then((serverDeleted: string[]) => {
+        if (Array.isArray(serverDeleted) && serverDeleted.length > 0) {
+          const merged = Array.from(new Set([...localDeleted, ...serverDeleted]));
+          setDeletedModels(merged);
+          localStorage.setItem("steward_deleted_models", JSON.stringify(merged));
+        }
+      })
+      .catch(() => {});
+
+    // 2. Load saved model and access code
+    const savedModel = localStorage.getItem("steward_ai_model");
+    if (savedModel) {
+      const cleanModel = savedModel.includes("/") ? savedModel.split("/").pop()! : savedModel;
+      if (!localDeleted.includes(cleanModel)) {
+        setAiModel(cleanModel);
+      } else {
+        const fallback = getDefaultModel(localDeleted);
+        setAiModel(fallback);
+      }
     }
     const savedCode = localStorage.getItem("steward_access_code");
     if (savedCode) {
@@ -87,7 +118,7 @@ export default function Home() {
     setTimeout(() => setAccessCodeError(true), 10);
   };
 
-  const [status, setStatus] = useState<"idle" | "running" | "completed" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "running" | "completed" | "error" | "failed">("idle");
   const [jobId, setJobId] = useState<string | null>(null);
   const [liveLogs, setLiveLogs] = useState<string>("");
   const [report, setReport] = useState<string>("");
@@ -184,16 +215,66 @@ export default function Home() {
     }
   }, [chatMessages]);
 
-  const startAnalysis = async (e: React.FormEvent) => {
+  const handleAuthenticate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!url) return;
+    if (!url.trim()) return;
+    if (!accessCode.trim()) {
+      triggerAccessCodeError();
+      return;
+    }
 
+    setIsAuthenticating(true);
+    setAccessCodeError(false);
+
+    try {
+      const res = await fetch("/api/kaggleCredits", {
+        headers: { "x-access-code": accessCode }
+      });
+
+      setIsAuthenticating(false);
+
+      if (res.status === 401) {
+        triggerAccessCodeError();
+        return;
+      }
+
+      localStorage.setItem("steward_access_code", accessCode);
+      setIsAuthenticated(true);
+
+      const data = await res.json().catch(() => null);
+      if (data && data.success) {
+        setKaggleCredits(data);
+      }
+
+      // Ensure model is not one of the deleted models
+      if (deletedModels.includes(aiModel)) {
+        const nextModel = getDefaultModel(deletedModels);
+        setAiModel(nextModel);
+      }
+    } catch (error) {
+      console.error(error);
+      setIsAuthenticating(false);
+      triggerAccessCodeError();
+    }
+  };
+
+  const startAnalysis = async (modelToUse?: string) => {
+    if (!url.trim()) return;
+    if (!accessCode.trim()) {
+      triggerAccessCodeError();
+      setIsAuthenticated(false);
+      return;
+    }
+
+    const chosenModel = modelToUse || aiModel;
     setIsStartingAnalysis(true);
     setLiveLogs("");
     setReport("");
     setChatMessages([]);
     setChatContext("");
     setIsAiCallActive(false);
+    setFailedModel(null);
+    setIsModelNotFoundError(false);
 
     try {
       const res = await fetch("/api/analyze", {
@@ -207,7 +288,7 @@ export default function Home() {
           play_store_url: playStore,
           app_store_url: appStore,
           additional_info: context,
-          model: aiModel,
+          model: chosenModel,
           reasoning_effort: "high"
         })
       });
@@ -216,6 +297,7 @@ export default function Home() {
 
       if (res.status === 401) {
         triggerAccessCodeError();
+        setIsAuthenticated(false);
         return;
       }
 
@@ -238,6 +320,37 @@ export default function Home() {
       console.error(error);
       setIsStartingAnalysis(false);
       setStatus("error");
+    }
+  };
+
+  const retryAnalysisWithModel = (modelToUse: string) => {
+    setAiModel(modelToUse);
+    localStorage.setItem("steward_ai_model", modelToUse);
+    startAnalysis(modelToUse);
+  };
+
+  const handleDeleteModel = async (modelId: string) => {
+    const updated = Array.from(new Set([...deletedModels, modelId]));
+    setDeletedModels(updated);
+    localStorage.setItem("steward_deleted_models", JSON.stringify(updated));
+
+    // Also persist to backend
+    try {
+      fetch("/api/deleteModel", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-access-code": accessCode
+        },
+        body: JSON.stringify({ model: modelId })
+      }).catch(() => {});
+    } catch (e) {}
+
+    // If current aiModel was deleted, switch to safe fallback
+    if (aiModel === modelId || failedModel === modelId) {
+      const fallback = getDefaultModel(updated);
+      setAiModel(fallback);
+      localStorage.setItem("steward_ai_model", fallback);
     }
   };
 
@@ -270,6 +383,17 @@ export default function Home() {
         // Show loading/updating logo against credits once an AI call is made
         if (data.ai_call_made) {
           setIsAiCallActive(true);
+        }
+
+        if (data.status === "failed") {
+          setStatus("failed");
+          setIsAiCallActive(false);
+          const failed = data.failed_model || aiModel;
+          setFailedModel(failed);
+          const isNotFound = data.error_type === "model_not_found" ||
+            (data.live_logs && /not found|does not exist|404|model_not_found|unsupported model/i.test(data.live_logs));
+          setIsModelNotFoundError(isNotFound);
+          return;
         }
 
         if (data.status === "completed" || data.status === "stopped") {
@@ -320,6 +444,8 @@ export default function Home() {
     setKaggleCredits(null);
     setCreditsConsumed(null);
     setFormattedConsumed(null);
+    setFailedModel(null);
+    setIsModelNotFoundError(false);
   };
 
   const fetchPastReports = async (silent = false) => {
@@ -815,10 +941,15 @@ export default function Home() {
             </div>
           )}
 
-          <CustomModelSelect
-            value={aiModel}
-            onChange={handleModelChange}
-          />
+          {/* Only show AI Model select after authentication or when viewing/running reports */}
+          {(isAuthenticated || isGeneratingReport || status === "running" || status === "completed") && (
+            <CustomModelSelect
+              value={aiModel}
+              onChange={handleModelChange}
+              deletedModels={deletedModels}
+              onDeleteModel={handleDeleteModel}
+            />
+          )}
           <ThemeToggle />
         </div>
       </header>
@@ -874,71 +1005,158 @@ export default function Home() {
               </div>
             </div>
 
-            <form onSubmit={startAnalysis} className="bg-white/70 dark:bg-neutral-900/70 backdrop-blur-2xl border border-white/80 dark:border-neutral-800 rounded-2xl p-5 md:p-6 shadow-2xl animate-in fade-in duration-500 flex flex-col gap-3.5 relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-cyan-400 opacity-90" />
+            {!isAuthenticated ? (
+              <form onSubmit={handleAuthenticate} className="bg-white/70 dark:bg-neutral-900/70 backdrop-blur-2xl border border-white/80 dark:border-neutral-800 rounded-2xl p-5 md:p-6 shadow-2xl animate-in fade-in duration-500 flex flex-col gap-3.5 relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-cyan-400 opacity-90" />
 
-              <div className="space-y-1.5">
-                <label className="text-sm font-bold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
-                  <Globe className="w-4 h-4 text-emerald-600 dark:text-emerald-500" /> Target Website, Product, or Brand Name *
-                </label>
-                <input required type="text" placeholder="e.g., https://example.com or Nike" value={url} onChange={(e) => setUrl(e.target.value)} className="w-full bg-white/80 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-xs" />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <label className="text-sm font-bold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
-                    <PlaySquare className="w-4 h-4 text-emerald-600 dark:text-emerald-500" /> Play Store URL
+                    <Globe className="w-4 h-4 text-emerald-600 dark:text-emerald-500" /> Target Website, Product, or Brand Name *
                   </label>
-                  <input type="url" placeholder="Optional" value={playStore} onChange={(e) => setPlayStore(e.target.value)} className="w-full bg-white/80 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-xs" />
+                  <input required type="text" placeholder="e.g., https://example.com or Nike" value={url} onChange={(e) => setUrl(e.target.value)} className="w-full bg-white/80 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-xs" />
                 </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-bold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
+                      <PlaySquare className="w-4 h-4 text-emerald-600 dark:text-emerald-500" /> Play Store URL
+                    </label>
+                    <input type="url" placeholder="Optional" value={playStore} onChange={(e) => setPlayStore(e.target.value)} className="w-full bg-white/80 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-xs" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-bold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
+                      <Smartphone className="w-4 h-4 text-emerald-600 dark:text-emerald-500" /> App Store URL
+                    </label>
+                    <input type="url" placeholder="Optional" value={appStore} onChange={(e) => setAppStore(e.target.value)} className="w-full bg-white/80 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-xs" />
+                  </div>
+                </div>
+
                 <div className="space-y-1.5">
                   <label className="text-sm font-bold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
-                    <Smartphone className="w-4 h-4 text-emerald-600 dark:text-emerald-500" /> App Store URL
+                    <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-500" /> Additional Context (Optional)
                   </label>
-                  <input type="url" placeholder="Optional" value={appStore} onChange={(e) => setAppStore(e.target.value)} className="w-full bg-white/80 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-xs" />
+                  <textarea rows={2} placeholder="Specific focus areas, ICP, target competitors..." value={context} onChange={(e) => setContext(e.target.value)} className="w-full bg-white/80 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all resize-none shadow-xs" />
                 </div>
-              </div>
 
-              <div className="space-y-1.5">
-                <label className="text-sm font-bold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-500" /> Additional Context (Optional)
-                </label>
-                <textarea rows={2} placeholder="Specific focus areas, ICP, target competitors..." value={context} onChange={(e) => setContext(e.target.value)} className="w-full bg-white/80 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all resize-none shadow-xs" />
-              </div>
+                <div className="space-y-1.5 pt-1 border-t border-neutral-200/80 dark:border-neutral-800">
+                  <label className="text-sm font-bold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-600 dark:text-emerald-500"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    Access Code *
+                  </label>
+                  <div className="relative">
+                    <input
+                      required
+                      type={showAccessCode ? "text" : "password"}
+                      placeholder="Required to generate report"
+                      value={accessCode}
+                      onChange={(e) => { setAccessCode(e.target.value); setAccessCodeError(false); }}
+                      className={`w-full bg-white/80 dark:bg-neutral-800/80 border rounded-lg pl-3 pr-10 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all shadow-xs ${accessCodeError ? 'border-rose-500 text-rose-500 animate-shake focus:border-rose-500 focus:ring-rose-500/50' : 'border-neutral-200 dark:border-neutral-700 focus:border-emerald-500'}`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowAccessCode(!showAccessCode)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 p-1 transition-colors cursor-pointer"
+                      title={showAccessCode ? "Hide access code" : "Show access code"}
+                      aria-label={showAccessCode ? "Hide access code" : "Show access code"}
+                    >
+                      {showAccessCode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  {accessCodeError && (
+                    <p className="text-rose-500 text-xs mt-0.5 px-1 animate-in fade-in">Invalid access code. Please try again.</p>
+                  )}
+                </div>
 
-              <div className="space-y-1.5 pt-1 border-t border-neutral-200/80 dark:border-neutral-800">
-                <label className="text-sm font-bold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-600 dark:text-emerald-500"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                  Access Code *
-                </label>
-                <div className="relative">
-                  <input
-                    required
-                    type={showAccessCode ? "text" : "password"}
-                    placeholder="Required to generate report"
-                    value={accessCode}
-                    onChange={(e) => { setAccessCode(e.target.value); setAccessCodeError(false); }}
-                    className={`w-full bg-white/80 dark:bg-neutral-800/80 border rounded-lg pl-3 pr-10 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all shadow-xs ${accessCodeError ? 'border-rose-500 text-rose-500 animate-shake focus:border-rose-500 focus:ring-rose-500/50' : 'border-neutral-200 dark:border-neutral-700 focus:border-emerald-500'}`}
-                  />
+                <button
+                  type="submit"
+                  disabled={isAuthenticating}
+                  className="w-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-200 font-bold py-2.5 px-5 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-md disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer text-sm mt-1"
+                >
+                  {isAuthenticating ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Authenticating...</span>
+                    </>
+                  ) : (
+                    <>
+                      <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                      <span>Authenticate</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+              </form>
+            ) : (
+              <div className="bg-white/70 dark:bg-neutral-900/70 backdrop-blur-2xl border border-white/80 dark:border-neutral-800 rounded-2xl p-5 md:p-6 shadow-2xl animate-in fade-in duration-500 flex flex-col gap-4 relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-cyan-400 opacity-90" />
+
+                <div className="flex items-center justify-between pb-2 border-b border-neutral-200/80 dark:border-neutral-800">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                      Authenticated
+                    </span>
+                  </div>
+                  <span className="text-xs font-mono font-medium text-neutral-500 dark:text-neutral-400 truncate max-w-[200px]" title={url}>
+                    {url}
+                  </span>
+                </div>
+
+                <div className="space-y-1">
+                  <h3 className="text-lg font-bold text-neutral-900 dark:text-white">
+                    Choose AI Model for Growth Report
+                  </h3>
+                  <p className="text-xs text-neutral-600 dark:text-neutral-400">
+                    By default, <span className="font-semibold text-neutral-900 dark:text-neutral-200">Gemini 3.7 Flash</span> is selected. Choose an alternative model or proceed with the recommended default.
+                  </p>
+                </div>
+
+                <div className="p-3 bg-neutral-50 dark:bg-neutral-950/50 border border-neutral-200/80 dark:border-neutral-800 rounded-xl space-y-2">
+                  <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 flex items-center justify-between">
+                    <span>Selected Frontier Model</span>
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono">15-20 Page Calibrated</span>
+                  </label>
+                  <div className="w-full">
+                    <CustomModelSelect
+                      value={aiModel}
+                      onChange={handleModelChange}
+                      deletedModels={deletedModels}
+                      onDeleteModel={handleDeleteModel}
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-1 flex flex-col gap-2">
                   <button
                     type="button"
-                    onClick={() => setShowAccessCode(!showAccessCode)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 p-1 transition-colors cursor-pointer"
-                    title={showAccessCode ? "Hide access code" : "Show access code"}
-                    aria-label={showAccessCode ? "Hide access code" : "Show access code"}
+                    disabled={isStartingAnalysis}
+                    onClick={() => startAnalysis()}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-5 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-lg disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer text-sm"
                   >
-                    {showAccessCode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {isStartingAnalysis ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Launching Analysis...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4" />
+                        <span>Start Growth Report Generation</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsAuthenticated(false)}
+                    className="text-xs text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200 transition-colors py-1 cursor-pointer text-center"
+                  >
+                    ← Edit Target Details or Access Code
                   </button>
                 </div>
-                {accessCodeError && (
-                  <p className="text-rose-500 text-xs mt-0.5 px-1 animate-in fade-in">Invalid access code. Please try again.</p>
-                )}
               </div>
-
-              <button type="submit" disabled={isStartingAnalysis} className="w-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-200 font-bold py-2.5 px-5 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-md disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer text-sm mt-1">
-                {isStartingAnalysis ? <Loader2 className="w-4 h-4 animate-spin" /> : "Start Analysis"} {!isStartingAnalysis && <ArrowRight className="w-4 h-4" />}
-              </button>
-            </form>
+            )}
           </div>
         </div>
       )}
@@ -1015,21 +1233,88 @@ export default function Home() {
         </div>
       )}
 
-      {status === "error" && (
-        <div className="flex-1 flex items-center justify-center px-4 print:hidden">
-          <div className="flex flex-col items-center justify-center text-center gap-5 p-8 bg-white/70 dark:bg-neutral-900/70 backdrop-blur-2xl border border-rose-200 dark:border-rose-900/50 rounded-2xl max-w-lg mx-auto shadow-xl">
-            <div className="w-14 h-14 bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-500 rounded-full flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" /><path d="M12 9v4" /><path d="M12 17h.01" /></svg>
+      {(status === "error" || status === "failed") && (
+        <div className="flex-1 flex items-center justify-center px-4 print:hidden animate-in fade-in duration-300">
+          <div className="flex flex-col items-center justify-center text-center gap-5 p-6 md:p-8 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-2xl border border-rose-200 dark:border-rose-900/50 rounded-2xl max-w-lg w-full mx-auto shadow-2xl">
+            <div className="w-14 h-14 bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center shadow-inner">
+              <AlertTriangle className="w-7 h-7" />
             </div>
+
             <div className="space-y-1.5">
-              <h3 className="text-xl font-bold text-neutral-900 dark:text-white">Connection Error</h3>
-              <p className="text-xs text-neutral-600 dark:text-neutral-400 max-w-sm mx-auto">
-                We couldn&apos;t connect to the Steward analysis engine. Please verify the backend connection or try again shortly.
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-[11px] font-mono font-semibold">
+                {isModelNotFoundError ? "Model Not Found on Kaggle Proxy" : "Generation Error"}
+              </div>
+              <h3 className="text-xl font-bold text-neutral-900 dark:text-white">
+                {isModelNotFoundError ? "Kaggle Model Unavailable" : "Report Generation Halted"}
+              </h3>
+              <p className="text-xs text-neutral-600 dark:text-neutral-400 max-w-md mx-auto">
+                {isModelNotFoundError
+                  ? `Kaggle Model Proxy could not find or run "${failedModel || aiModel}". You can permanently delete this model and retry right now with another model.`
+                  : (liveLogs ? "An error occurred during report generation. You can retry immediately with another model below." : "We couldn't connect to the Steward analysis engine. Please try again.")}
               </p>
             </div>
-            <button onClick={resetAnalysis} className="px-5 py-2.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 font-bold text-xs rounded-xl hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-colors shadow-md flex items-center gap-2 cursor-pointer">
-              <ArrowLeft className="w-3.5 h-3.5" /> Return Home
-            </button>
+
+            {/* Model Not Found Remediation Box */}
+            <div className="w-full bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200/80 dark:border-rose-900/40 rounded-xl p-3.5 space-y-3 text-left">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-neutral-700 dark:text-neutral-300">
+                  Failed Model:
+                </span>
+                <span className="font-mono text-rose-600 dark:text-rose-400 font-bold">
+                  {failedModel || aiModel}
+                </span>
+              </div>
+
+              {/* Delete model permanently button */}
+              <button
+                type="button"
+                onClick={() => handleDeleteModel(failedModel || aiModel)}
+                className="w-full py-2 px-3 bg-white dark:bg-neutral-800 border border-rose-300 dark:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-400 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Permanently Delete &quot;{failedModel || aiModel}&quot; from Choices
+              </button>
+
+              {/* Choose alternative model */}
+              <div className="pt-2 border-t border-rose-200/60 dark:border-rose-900/30 space-y-1.5">
+                <label className="text-[11px] font-bold text-neutral-700 dark:text-neutral-300">
+                  Select Alternative Model to Retry:
+                </label>
+                <div className="w-full">
+                  <CustomModelSelect
+                    value={aiModel}
+                    onChange={handleModelChange}
+                    deletedModels={deletedModels}
+                    onDeleteModel={handleDeleteModel}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Retry CTA */}
+            <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full">
+              <button
+                type="button"
+                disabled={isStartingAnalysis}
+                onClick={() => retryAnalysisWithModel(aiModel)}
+                className="flex-1 w-full py-2.5 px-5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
+              >
+                {isStartingAnalysis ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <RotateCcw className="w-3.5 h-3.5" />
+                )}
+                <span>Retry Generation with Selected Model</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={resetAnalysis}
+                className="py-2.5 px-4 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 border border-neutral-200 dark:border-neutral-700 font-semibold text-xs rounded-xl transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
