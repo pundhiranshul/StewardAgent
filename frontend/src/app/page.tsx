@@ -1087,8 +1087,8 @@ export default function Home() {
                 </button>
               </form>
             ) : (
-              <div className="bg-white/70 dark:bg-neutral-900/70 backdrop-blur-2xl border border-white/80 dark:border-neutral-800 rounded-2xl p-5 md:p-6 shadow-2xl animate-in fade-in duration-500 flex flex-col gap-4 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-cyan-400 opacity-90" />
+              <div className="bg-white/70 dark:bg-neutral-900/70 backdrop-blur-2xl border border-white/80 dark:border-neutral-800 rounded-2xl p-5 md:p-6 shadow-2xl animate-in fade-in duration-500 flex flex-col gap-4 relative">
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 to-cyan-400 opacity-90 rounded-t-2xl" />
 
                 <div className="flex items-center justify-between pb-2 border-b border-neutral-200/80 dark:border-neutral-800">
                   <div className="flex items-center gap-2">
