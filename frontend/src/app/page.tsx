@@ -57,6 +57,8 @@ export default function Home() {
   const [isAiCallActive, setIsAiCallActive] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [isUpdatingCredits, setIsUpdatingCredits] = useState(false);
+  const [creditsConsumed, setCreditsConsumed] = useState<number | null>(null);
+  const [formattedConsumed, setFormattedConsumed] = useState<string | null>(null);
 
   const fetchKaggleCredits = async (codeToUse?: string) => {
     const code = codeToUse || accessCode;
@@ -223,6 +225,8 @@ export default function Home() {
       setIsGeneratingReport(true);
       setStatus("running");
       setJobId(data.job_id);
+      setCreditsConsumed(null);
+      setFormattedConsumed(null);
 
       // Immediately show remaining Kaggle AI credits as soon as report generation is initiated
       if (data.kaggle_credits && data.kaggle_credits.success) {
@@ -256,6 +260,13 @@ export default function Home() {
         if (data.live_logs) setLiveLogs(data.live_logs);
         if (data.final_report) setReport(data.final_report);
 
+        if (data.credits_consumed !== undefined && data.credits_consumed !== null) {
+          setCreditsConsumed(data.credits_consumed);
+        }
+        if (data.formatted_consumed) {
+          setFormattedConsumed(data.formatted_consumed);
+        }
+
         // Show loading/updating logo against credits once an AI call is made
         if (data.ai_call_made) {
           setIsAiCallActive(true);
@@ -264,6 +275,12 @@ export default function Home() {
         if (data.status === "completed" || data.status === "stopped") {
           setStatus("completed");
           setIsAiCallActive(false);
+          if (data.credits_consumed !== undefined && data.credits_consumed !== null) {
+            setCreditsConsumed(data.credits_consumed);
+          }
+          if (data.formatted_consumed) {
+            setFormattedConsumed(data.formatted_consumed);
+          }
           // Update remaining AI credits when report finishes or stops
           fetchKaggleCredits(accessCode);
           setTimeout(() => fetchKaggleCredits(accessCode), 1500);
@@ -301,6 +318,8 @@ export default function Home() {
     setIsGeneratingReport(false);
     setIsAiCallActive(false);
     setKaggleCredits(null);
+    setCreditsConsumed(null);
+    setFormattedConsumed(null);
   };
 
   const fetchPastReports = async (silent = false) => {
@@ -357,6 +376,8 @@ export default function Home() {
   const viewPastReport = async (reportJobId: string) => {
     setIsGeneratingReport(false);
     setKaggleCredits(null);
+    setCreditsConsumed(null);
+    setFormattedConsumed(null);
     setIsAiCallActive(false);
     setJobId(reportJobId);
     setStatus("running");
@@ -376,6 +397,12 @@ export default function Home() {
       const data = await res.json();
       if (data.live_logs) setLiveLogs(data.live_logs);
       if (data.final_report) setReport(data.final_report);
+      if (data.credits_consumed !== undefined && data.credits_consumed !== null) {
+        setCreditsConsumed(data.credits_consumed);
+      }
+      if (data.formatted_consumed) {
+        setFormattedConsumed(data.formatted_consumed);
+      }
       setStatus(data.status);
     } catch (e) {
       console.error(e);
@@ -770,6 +797,24 @@ export default function Home() {
             </div>
           )}
 
+          {/* AI Credit Consumed Pill: Shown in RED at the top when report creation is finished */}
+          {(status === "completed" || creditsConsumed !== null) && (formattedConsumed || creditsConsumed !== null) && (
+            <div
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1 bg-rose-50/90 dark:bg-rose-950/80 backdrop-blur-md border border-rose-300 dark:border-rose-800 rounded-xl text-xs shadow-xs transition-all animate-in fade-in select-none"
+              title="Total AI Credit Consumed"
+            >
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                <span className="text-rose-700 dark:text-rose-300 font-semibold whitespace-nowrap">
+                  AI Credit Consumed:
+                </span>
+                <span className="font-mono font-bold text-rose-600 dark:text-rose-400 whitespace-nowrap">
+                  {formattedConsumed || (creditsConsumed !== null ? `$${Number(creditsConsumed).toFixed(2)}` : "$0.00")}
+                </span>
+              </div>
+            </div>
+          )}
+
           <CustomModelSelect
             value={aiModel}
             onChange={handleModelChange}
@@ -824,9 +869,8 @@ export default function Home() {
                 Steward autonomously scours the web, app reviews, and statistical data to generate deeply cited, academic-grade growth reports for your product.
               </p>
               <div className="flex flex-wrap gap-2 pt-1 text-xs text-neutral-500 dark:text-neutral-400 font-mono">
-                <span className="px-2.5 py-1 rounded-md bg-white/40 dark:bg-neutral-800/40 border border-neutral-200/60 dark:border-neutral-700/60 shadow-2xs">✓ 15-Part Rigorous Report</span>
+                <span className="px-2.5 py-1 rounded-md bg-white/40 dark:bg-neutral-800/40 border border-neutral-200/60 dark:border-neutral-700/60 shadow-2xs">✓ 7-Section Executive Report</span>
                 <span className="px-2.5 py-1 rounded-md bg-white/40 dark:bg-neutral-800/40 border border-neutral-200/60 dark:border-neutral-700/60 shadow-2xs">✓ Multi-Source Cites</span>
-                <span className="px-2.5 py-1 rounded-md bg-white/40 dark:bg-neutral-800/40 border border-neutral-200/60 dark:border-neutral-700/60 shadow-2xs">✓ Zero Direct Cost</span>
               </div>
             </div>
 
@@ -1039,6 +1083,11 @@ export default function Home() {
                 <div className="text-right">
                   <p className="text-xs font-bold text-emerald-300/80 uppercase tracking-widest mb-1">Target Analysis</p>
                   <p className="text-xl font-black text-white">{url || "Custom Target"}</p>
+                  {(status === "completed" || creditsConsumed !== null) && (formattedConsumed || creditsConsumed !== null) && (
+                    <p className="text-xs font-mono text-rose-300 font-bold mt-0.5">
+                      AI Credit Consumed: {formattedConsumed || `$${Number(creditsConsumed).toFixed(2)}`}
+                    </p>
+                  )}
                   <p className="text-xs font-mono text-emerald-200/80 font-semibold mt-1">{new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
                 </div>
               </div>
@@ -1048,9 +1097,16 @@ export default function Home() {
                   <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200 tracking-wide uppercase">Growth Intelligence Report</span>
                 </div>
-                {url && (
-                  <span className="text-xs font-mono text-neutral-500 dark:text-neutral-400 truncate max-w-xs">{url}</span>
-                )}
+                <div className="flex items-center gap-3">
+                  {(status === "completed" || creditsConsumed !== null) && (formattedConsumed || creditsConsumed !== null) && (
+                    <span className="text-xs font-mono font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-800 px-2.5 py-1 rounded-lg shadow-xs">
+                      AI Credit Consumed: {formattedConsumed || `$${Number(creditsConsumed).toFixed(2)}`}
+                    </span>
+                  )}
+                  {url && (
+                    <span className="text-xs font-mono text-neutral-500 dark:text-neutral-400 truncate max-w-xs">{url}</span>
+                  )}
+                </div>
               </div>
 
               <div className="flex-1 overflow-y-auto p-6 md:p-8 prose prose-sm md:prose-base prose-neutral dark:prose-invert max-w-none print:p-0 print:max-w-full print:overflow-visible">
